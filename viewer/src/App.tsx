@@ -124,7 +124,7 @@ function Record({ element }: { element: ManualElement }) {
   const isTable = element.type === "table";
   return (
     <>
-      <div className="record-heading">
+      <div className="record-heading" data-type={element.type}>
         <span className="eyebrow">
           {element.type} · page {element.page}
         </span>
@@ -134,8 +134,8 @@ function Record({ element }: { element: ManualElement }) {
             : "Excluded from retrieval"}
         </span>
       </div>
-      <section className="text-block">
-        <h3>{isTable ? "Structured content" : "Source caption / text"}</h3>
+      <section className="text-block source-evidence">
+        <h3>Source evidence</h3>
         <>
           {isTable && element.table_markdown ? (
             <TableContent markdown={element.table_markdown} />
@@ -167,8 +167,8 @@ function Record({ element }: { element: ManualElement }) {
           )}
         {element.type === "image" && (
           <small>
-            This is the text attached to the element. Other page text is
-            available in the document tree.
+            The original page or crop is shown alongside. Text above is attached
+            to this element; other page text is available in the document tree.
           </small>
         )}
       </section>
@@ -215,6 +215,7 @@ function Workbench({ bundle }: { bundle: LoadedRunBundle }) {
   const [query, setQuery] = useState("");
   const [sourceView, setSourceView] = useState<"Page" | "Crop">("Page");
   const [zoom, setZoom] = useState(1);
+  const canvasRef = useRef<HTMLDivElement>(null);
   const node = nodes.find(({ node }) => node.id === selected)?.node;
   const element = node && node.type !== "chapter" ? node : null;
   const { manifest, manual, validation, source } = bundle;
@@ -226,6 +227,9 @@ function Workbench({ bundle }: { bundle: LoadedRunBundle }) {
   const geometry = element ? bboxToPercentage(element.source) : null;
   const imageUrl =
     sourceView === "Crop" && cropPath ? asset(cropPath) : asset(pagePath);
+  useEffect(() => {
+    canvasRef.current?.scrollTo({ top: 0, left: 0 });
+  }, [imageUrl]);
   const images = nodes.filter(({ node }) => node.type === "image");
   const tables = nodes.filter(({ node }) => node.type === "table");
   const processed = manual.metadata.pages_processed;
@@ -242,7 +246,7 @@ function Workbench({ bundle }: { bundle: LoadedRunBundle }) {
     }
   }
   return (
-    <>
+    <div className={`product-view ${view === "Inspect" ? "inspect-view" : "summary-view"}`}>
       <div className="document-bar">
         <div>
           <span className="eyebrow">OPEN DOCUMENT</span>
@@ -271,11 +275,10 @@ function Workbench({ bundle }: { bundle: LoadedRunBundle }) {
       </nav>
       {view === "Overview" && (
         <div className="overview">
-          <span className="eyebrow">FROM PDF TO TRACEABLE CONTENT</span>
-          <h2>A manual you can inspect.</h2>
+          <span className="eyebrow">DOCUMENT OVERVIEW</span>
+          <h2>Document summary</h2>
           <p>
-            Read the source, see what was extracted, and compare it with the
-            generated description.
+            Source pages, extracted content and image descriptions in one bundle.
           </p>
           <div className="flow">
             <span>PDF</span>
@@ -305,11 +308,14 @@ function Workbench({ bundle }: { bundle: LoadedRunBundle }) {
             {label(manifest.pipeline.profile)} · {manifest.pipeline.parser} ·{" "}
             {label(manifest.pipeline.structure_strategy)}
           </p>
+          <details>
+            <summary>Detection details</summary>
           <ul>
             {manifest.source.detected.reasons.map((reason, i) => (
               <li key={i}>{reason}</li>
             ))}
           </ul>
+          </details>
           <button className="primary" onClick={() => setView("Inspect")}>
             Explore the document →
           </button>
@@ -353,12 +359,14 @@ function Workbench({ bundle }: { bundle: LoadedRunBundle }) {
                 .map(({ node, depth }) => (
                   <button
                     key={node.id}
-                    className={selected === node.id ? "selected" : ""}
+                    data-type={node.type}
+                    className={`${node.type === "chapter" ? "chapter-node" : "element-node"} ${selected === node.id ? "selected" : ""}`}
                     style={{ paddingLeft: `${12 + Math.min(depth, 3) * 10}px` }}
                     onClick={() => {
                       setSelected(node.id);
                       setZoom(1);
                     }}
+                    title={node.type === "chapter" ? node.title : node.id}
                     aria-pressed={selected === node.id}
                   >
                     <span className="node-type">
@@ -375,7 +383,7 @@ function Workbench({ bundle }: { bundle: LoadedRunBundle }) {
                         ? node.title
                         : node.caption_original ||
                           node.text?.slice(0, 64) ||
-                          `${label(node.type)} · ${node.id}`}
+                          `${label(node.type)} · page ${node.page}`}
                     </span>
                     <small>{node.page}</small>
                   </button>
@@ -413,7 +421,8 @@ function Workbench({ bundle }: { bundle: LoadedRunBundle }) {
                 )}
                 <button
                   aria-label="Zoom out"
-                  onClick={() => setZoom(Math.max(1, zoom - 0.25))}
+                  disabled={zoom <= 0.5}
+                  onClick={() => setZoom((value) => Math.max(0.5, value - 0.25))}
                 >
                   −
                 </button>
@@ -422,14 +431,15 @@ function Workbench({ bundle }: { bundle: LoadedRunBundle }) {
                 </button>
                 <button
                   aria-label="Zoom in"
-                  onClick={() => setZoom(Math.min(2.5, zoom + 0.25))}
+                  disabled={zoom >= 2.5}
+                  onClick={() => setZoom((value) => Math.min(2.5, value + 0.25))}
                 >
                   +
                 </button>
               </div>
             </div>
-            <div className="canvas">
-              <div style={{ width: `${zoom * 100}%`, minWidth: "100%" }}>
+            <div ref={canvasRef} className="canvas" tabIndex={0} aria-label="Document preview">
+              <div className="zoom-surface" style={{ width: `${zoom * 100}%` }}>
                 <Preview
                   url={imageUrl}
                   alt={
@@ -450,6 +460,7 @@ function Workbench({ bundle }: { bundle: LoadedRunBundle }) {
                         return box ? (
                           <button
                             key={el.id}
+                            data-type={el.type}
                             className={`bbox ${selected === el.id ? "active" : ""}`}
                             aria-label={`Select ${el.type} ${el.id}`}
                             style={{
@@ -476,7 +487,7 @@ function Workbench({ bundle }: { bundle: LoadedRunBundle }) {
               )}
             </div>
           </section>
-          <aside className="inspector">
+          <aside className="inspector" tabIndex={0} aria-label="Element inspector">
             <div className="panel-title">Extracted content</div>
             {element ? (
               <Record element={element} />
@@ -551,7 +562,7 @@ function Workbench({ bundle }: { bundle: LoadedRunBundle }) {
           <Raw title="Run manifest" value={manifest} />
         </div>
       )}
-    </>
+    </div>
   );
 }
 export function App() {
