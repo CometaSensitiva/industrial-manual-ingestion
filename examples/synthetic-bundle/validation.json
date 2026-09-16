@@ -1,0 +1,176 @@
+{
+  "schema_version": "1.1",
+  "run_id": "synthetic-example",
+  "status": "passed",
+  "checks": [
+    {
+      "id": "run.directory",
+      "passed": true,
+      "message": "Run directory exists"
+    },
+    {
+      "id": "manifest.exists",
+      "passed": true,
+      "message": "run.json exists"
+    },
+    {
+      "id": "manifest.json",
+      "passed": true,
+      "message": "run.json contains a JSON object"
+    },
+    {
+      "id": "manifest.contract",
+      "passed": true,
+      "message": "run.json matches RunManifest"
+    },
+    {
+      "id": "manifest.status.finished",
+      "passed": true,
+      "message": "Finished status: validated"
+    },
+    {
+      "id": "artifacts.paths.safe",
+      "passed": true,
+      "message": "All manifest artifact paths remain inside the run"
+    },
+    {
+      "id": "diagnostics.directory",
+      "passed": true,
+      "message": "Diagnostics directory exists"
+    },
+    {
+      "id": "manual.exists",
+      "passed": true,
+      "message": "manual.json exists"
+    },
+    {
+      "id": "manual.json",
+      "passed": true,
+      "message": "manual.json contains a JSON object"
+    },
+    {
+      "id": "manual.contract",
+      "passed": true,
+      "message": "manual.json matches ManualDocument"
+    },
+    {
+      "id": "toc.exists",
+      "passed": true,
+      "message": "toc.json exists"
+    },
+    {
+      "id": "toc.json",
+      "passed": true,
+      "message": "toc.json contains a JSON array"
+    },
+    {
+      "id": "toc.contract",
+      "passed": true,
+      "message": "toc.json entries match TocEntry"
+    },
+    {
+      "id": "run_id.coherent",
+      "passed": true,
+      "message": "Manifest and manual run IDs are coherent"
+    },
+    {
+      "id": "validation.artifact",
+      "passed": true,
+      "message": "Declared validation report matches the current bundle"
+    },
+    {
+      "id": "source.coherent",
+      "passed": true,
+      "message": "Manifest pipeline/source metadata matches manual metadata"
+    },
+    {
+      "id": "pages.bounds",
+      "passed": true,
+      "message": "Processed, chapter, and element pages are within source bounds"
+    },
+    {
+      "id": "pages.content.coverage",
+      "passed": true,
+      "message": "Canonical elements cover enough processed pages"
+    },
+    {
+      "id": "ids.unique",
+      "passed": true,
+      "message": "All chapter and element IDs are unique"
+    },
+    {
+      "id": "trace.parents.coherent",
+      "passed": true,
+      "message": "Chapter nesting and element parent traces are coherent"
+    },
+    {
+      "id": "assets.paths.safe",
+      "passed": true,
+      "message": "All referenced assets remain inside the run"
+    },
+    {
+      "id": "assets.exist",
+      "passed": true,
+      "message": "All referenced assets exist"
+    },
+    {
+      "id": "captions.provenance.consistent",
+      "passed": true,
+      "message": "Generated captions and provenance are consistent"
+    },
+    {
+      "id": "captions.provenance.identity",
+      "passed": true,
+      "message": "Generated-caption identity, prompt, and runtime match the pipeline"
+    },
+    {
+      "id": "captions.input.coherent",
+      "passed": true,
+      "message": "Caption provenance input digests match deterministic prompt and assets"
+    },
+    {
+      "id": "promotion.evidence.coherent",
+      "passed": true,
+      "message": "Persisted promotion evidence matches canonical bundle artifacts"
+    },
+    {
+      "id": "status.promotion.coherent",
+      "passed": true,
+      "message": "Validated status is supported by all promotion gates"
+    },
+    {
+      "id": "toc.hierarchy.coherent",
+      "passed": true,
+      "message": "TOC entries match the canonical chapter hierarchy"
+    },
+    {
+      "id": "toc.pages.bounds",
+      "passed": true,
+      "message": "All TOC pages are within source bounds"
+    },
+    {
+      "id": "tables.serialization.coherent",
+      "passed": true,
+      "message": "Canonical table serializations match their source content and context"
+    }
+  ],
+  "metrics": {
+    "source_pages_total": 2,
+    "processed_page_count": 2,
+    "chapter_count": 2,
+    "element_count": 8,
+    "element_page_count": 2,
+    "toc_entry_count": 2,
+    "asset_reference_count": 2,
+    "caption_count": 1,
+    "table_count": 1,
+    "table_serialization_structured_count": 1,
+    "table_serialization_fallback_count": 0,
+    "table_serialization_unavailable_count": 0,
+    "table_serialized_row_count": 3,
+    "duplicate_id_count": 0,
+    "validation_policy_version": "1.1",
+    "bundle_fingerprint_sha256": "e1069d3525fc91451697d124c7203f5ada6a1b8f721bb3320b5202adc279933e",
+    "failed_check_count": 0
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.1",
+  "kind": "detection",
+  "strategy": "pdf_capability_detection_v1",
+  "capabilities": {
+    "profile": "digital_outline",
+    "embedded_outline": true,
+    "outline_entries": 2,
+    "text_layer": true,
+    "sampled_pages": [
+      1,
+      2
+    ],
+    "pages_with_text": 2,
+    "median_text_characters": 561.0,
+    "profile_confidence": 1.0,
+    "reasons": [
+      "Embedded PDF outline detected (2 entries).",
+      "Robust text-layer coverage detected: 2/2 sampled pages (100.0%) contain at least 40 non-whitespace characters (minimum required: 2/2 under the 75% digital-coverage policy).",
+      "Median sampled text count: 561.0 non-whitespace characters.",
+      "Selected digital_outline because both an embedded outline and a usable text layer are available."
+    ]
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "schema_version": "1.1",
+  "run_id": "synthetic-example",
+  "status": "validated",
+  "source": {
+    "file": "synthetic-manual.pdf",
+    "sha256": "cef01cc6c7efaea4635d431856d542f0612679a5b0c959aed9a5bcb8aeb23354",
+    "size_bytes": 2601923,
+    "pages_total": 2,
+    "detected": {
+      "profile": "digital_outline",
+      "embedded_outline": true,
+      "outline_entries": 2,
+      "text_layer": true,
+      "sampled_pages": [
+        1,
+        2
+      ],
+      "pages_with_text": 2,
+      "median_text_characters": 561.0,
+      "profile_confidence": 1.0,
+      "reasons": [
+        "Embedded PDF outline detected (2 entries).",
+        "Robust text-layer coverage detected: 2/2 sampled pages (100.0%) contain at least 40 non-whitespace characters (minimum required: 2/2 under the 75% digital-coverage policy).",
+        "Median sampled text count: 561.0 non-whitespace characters.",
+        "Selected digital_outline because both an embedded outline and a usable text layer are available."
+      ]
+    }
+  },
+  "pipeline": {
+    "profile": "digital_outline",
+    "parser": "docling",
+    "structure_strategy": "embedded_outline",
+    "enrichment_provider": "ollama",
+    "enrichment_model": "qwen3.5:4b",
+    "config": {
+      "routing": {
+        "mode": "automatic",
+        "strategy": "pdf_capability_detection_v1",
+        "detected_profile": "digital_outline",
+        "profile_confidence": 1.0
+      },
+      "pages": {
+        "selection": "full_document",
+        "processed": [
+          1,
+          2
+        ]
+      },
+      "parser": {
+        "name": "docling",
+        "runtime": {
+          "manual_ingestion": "1.0.0",
+          "python": "3.12.13",
+          "pydantic": "2.13.4",
+          "pymupdf": "1.28.0",
+          "pillow": "11.3.0",
+          "docling": "2.112.0"
+        },
+        "config": {
+          "crop_scale": 2.0
+        }
+      },
+      "structure": {
+        "strategy": "embedded_outline",
+        "config": null
+      },
+      "postprocess": {
+        "visual_crop_filter": {
+          "strategy": "bbox_area_fraction_v1",
+          "threshold": 0.02
+        }
+      },
+      "enrichment": {
+        "enabled": true,
+        "prompt_version": "technical-caption-v4",
+        "max_caption_characters": 1200,
+        "provider_config": {
+          "model": "qwen3.5:4b",
+          "base_url": "http://127.0.0.1:11434",
+          "timeout_seconds": 180,
+          "temperature": 0.0,
+          "num_predict": 512,
+          "repeat_penalty": 1.15,
+          "num_ctx": 4096,
+          "thinking": false
+        },
+        "preflight": {
+          "version": "0.34.0",
+          "model": "qwen3.5:4b",
+          "model_digest": "2a654d98e6fba55d452b7043684e9b57a947e393bbffa62485a7aac05ee4eefd"
+        }
+      },
+      "table_serialization": {
+        "strategy": "header_value_rows_v1"
+      }
+    }
+  },
+  "artifacts": {
+    "manual": "manual.json",
+    "toc": "toc.json",
+    "validation": "validation.json",
+    "assets": "assets",
+    "diagnostics": "diagnostics"
+  },
+  "started_at": "2026-09-16T06:47:56.554080+00:00",
+  "completed_at": "2026-09-16T06:48:44.354985+00:00",
+  "warnings": [],
+  "errors": []
+}

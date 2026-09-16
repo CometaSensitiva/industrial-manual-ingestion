@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.1",
+  "kind": "enrichment",
+  "provider_configured": true,
+  "provider_preflight": {
+    "version": "0.34.0",
+    "model": "qwen3.5:4b",
+    "model_digest": "2a654d98e6fba55d452b7043684e9b57a947e393bbffa62485a7aac05ee4eefd"
+  },
+  "enriched": 1,
+  "skipped": 1,
+  "failed": 0,
+  "review_required": 0,
+  "items": [
+    {
+      "element_id": "docling-image-0001-0001",
+      "status": "enriched",
+      "reason": "caption validated"
+    },
+    {
+      "element_id": "docling-table-0002-0001",
+      "status": "skipped",
+      "reason": "table uses structured serialization"
+    }
+  ]
+}

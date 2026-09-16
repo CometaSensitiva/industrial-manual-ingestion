@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.1",
+  "kind": "promotion",
+  "policy_version": "1.0",
+  "eligible_for_validated": true,
+  "acceptance_evidence_id": null,
+  "profile_warnings": [],
+  "gates": [
+    {
+      "id": "document.full",
+      "passed": true,
+      "message": "Processed all 2/2 source pages."
+    },
+    {
+      "id": "enrichment.configured",
+      "passed": true,
+      "message": "Caption enrichment is configured as ollama/qwen3.5:4b."
+    },
+    {
+      "id": "captions.identity",
+      "passed": true,
+      "message": "Generated-caption identity, prompt, and runtime match the pipeline."
+    },
+    {
+      "id": "enrichment.review_free",
+      "passed": true,
+      "message": "No generated visual caption requires manual review."
+    },
+    {
+      "id": "warnings.nonconsequential",
+      "passed": true,
+      "message": "No consequential parser or structure warnings were reported."
+    },
+    {
+      "id": "profile.accepted",
+      "passed": true,
+      "message": "Profile digital_outline uses the accepted parser and structure setup."
+    },
+    {
+      "id": "structure.accepted",
+      "passed": true,
+      "message": "Profile structure satisfies promotion policy."
+    }
+  ]
+}

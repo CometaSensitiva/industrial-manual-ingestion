@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.1",
+  "kind": "crop_filter",
+  "strategy": "bbox_area_fraction_v1",
+  "threshold": 0.02,
+  "excluded": 0,
+  "kept": 2,
+  "preserved": 0,
+  "unassessed": 0,
+  "decisions": [
+    {
+      "element_id": "docling-image-0001-0001",
+      "element_type": "image",
+      "status": "kept",
+      "area_fraction": 0.2994704569868297,
+      "reason": "crop area meets page-area threshold"
+    },
+    {
+      "element_id": "docling-table-0002-0001",
+      "element_type": "table",
+      "status": "kept",
+      "area_fraction": 0.1895984875045573,
+      "reason": "crop area meets page-area threshold"
+    }
+  ]
+}

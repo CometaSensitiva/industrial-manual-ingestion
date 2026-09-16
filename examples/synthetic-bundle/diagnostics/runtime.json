@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.1",
+  "kind": "runtime",
+  "profile_runtime": {
+    "manual_ingestion": "1.0.0",
+    "python": "3.12.13",
+    "pydantic": "2.13.4",
+    "pymupdf": "1.28.0",
+    "pillow": "11.3.0",
+    "docling": "2.112.0"
+  },
+  "provider_runtime": {
+    "version": "0.34.0",
+    "model": "qwen3.5:4b",
+    "model_digest": "2a654d98e6fba55d452b7043684e9b57a947e393bbffa62485a7aac05ee4eefd"
+  },
+  "paddle_runtime_config": null
+}
