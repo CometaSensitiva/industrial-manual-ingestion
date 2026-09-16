@@ -54,15 +54,16 @@ class RichProgressRenderer:
 
         console = Console(file=self._stream, force_terminal=self.enabled)
         self._progress = Progress(
-            SpinnerColumn(finished_text=" "),
+            SpinnerColumn(finished_text=" ", style="#b4a0e5"),
             TextColumn("{task.fields[label]}", markup=False),
-            BarColumn(bar_width=24),
+            BarColumn(bar_width=20, complete_style="#b4a0e5", finished_style="green", pulse_style="#97bafa"),
             TextColumn("{task.fields[counter]}", markup=False),
             TimeElapsedColumn(),
             console=console,
             auto_refresh=True,
             refresh_per_second=refresh_per_second,
             expand=False,
+            transient=True,
         )
 
     @property

@@ -623,7 +623,11 @@ export function App() {
           className="brand"
           href="https://github.com/CometaSensitiva/industrial-manual-ingestion"
         >
-          <span className="brand-mark">M</span>
+          <span className="brand-ascii" aria-hidden="true">{`    .-.
+ .-*#%%*.
+:+%@%#**+
+ =#%#*+=
+  +**+=`}</span>
           <span>
             Industrial Manual Ingestion<small>BUNDLE VIEWER</small>
           </span>

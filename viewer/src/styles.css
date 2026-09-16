@@ -78,16 +78,13 @@ a:hover {
   margin-top: 5px;
   color: #7a857d;
 }
-.brand-mark {
-  background: #244c39;
-  color: #fff;
-  width: 35px;
-  height: 39px;
-  display: grid;
-  place-items: center;
-  font-family: Georgia, serif;
-  font-size: 25px;
-  border-radius: 3px;
+.brand-ascii {
+  width: 43px;
+  color: #7e4ab5;
+  font: 700 6px/0.78 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  white-space: pre;
+  letter-spacing: -0.45px;
+  user-select: none;
 }
 .header-actions {
   display: flex;
@@ -554,9 +551,9 @@ footer {
   .brand {
     font-size: 12px;
   }
-  .brand-mark {
-    width: 28px;
-    height: 32px;
+  .brand-ascii {
+    width: 32px;
+    font-size: 4.4px;
   }
   .header-actions button {
     font-size: 11px;
@@ -677,7 +674,7 @@ footer {
 .app:has(.product-view) { color: #25292e; background: #fafafa; }
 .app:has(.product-view) .app-header { height: 58px; padding: 0 24px; border-color: #e2e4e7; }
 .app:has(.product-view) .brand { color: #25292e; font-size: 13px; gap: 9px; }
-.app:has(.product-view) .brand-mark { width: 27px; height: 29px; font-size: 21px; background: #30383a; }
+.app:has(.product-view) .brand-ascii { width: 50px; font-size: 6.8px; line-height: .78; }
 .app:has(.product-view) .brand small { font-size: 8px; letter-spacing: 1.2px; margin-top: 3px; color: #73787e; }
 .app:has(.product-view) .local-note { color: #73787e; }
 .app:has(.product-view) footer { padding: 12px 24px; color: #73787e; }
@@ -740,6 +737,7 @@ footer {
 @media (max-width: 650px) {
   .app:has(.product-view) .app-header { padding: 0 14px; height: 58px; }
   .app:has(.product-view) .brand { font-size: 11px; }
+  .app:has(.product-view) .brand-ascii { width: 40px; font-size: 5.4px; }
   .inspect-view { margin: 8px 8px 0; border-radius: 8px; }
   .inspect-view .document-bar { display: block; padding: 14px 14px 8px; }
   .inspect-view h1 { font-size: 17px; }

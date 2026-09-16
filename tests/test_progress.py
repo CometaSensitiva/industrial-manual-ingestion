@@ -130,12 +130,11 @@ def test_renderer_uses_indeterminate_display_without_inventing_a_counter() -> No
                 detail="Docling",
             )
         )
+        task = renderer._progress.tasks[0]
+        assert task.fields["label"] == "✓ Extracting — Docling"
+        assert task.fields["counter"] == ""
 
-    output = stream.getvalue()
-    assert "Extracting" in output
-    assert "Docling" in output
-    assert "?/" not in output
-    assert "%" not in output
+    assert stream.getvalue() == "\n"
 
 
 def test_renderer_switches_to_a_determinate_real_counter_and_marks_completion() -> None:
@@ -173,11 +172,12 @@ def test_renderer_switches_to_a_determinate_real_counter_and_marks_completion() 
                 unit="pagine",
             )
         )
+        task = renderer._progress.tasks[0]
+        assert task.fields["counter"] == "34/34 pagine"
+        assert task.fields["label"] == "✓ Extracting"
     renderer.close()
 
-    output = stream.getvalue()
-    assert "34/34 pagine" in output
-    assert "✓ Extracting" in output
+    assert stream.getvalue() == "\n"
     assert not renderer.active
 
 
@@ -195,9 +195,11 @@ def test_renderer_marks_failed_stage_and_never_uses_standard_output(capsys) -> N
                 detail="provider non disponibile",
             )
         )
+        task = renderer._progress.tasks[0]
+        assert task.fields["label"] == "✗ Describing images — provider non disponibile"
+        assert task.fields["counter"] == "2/4 elementi"
 
     captured = capsys.readouterr()
     assert captured.out == ""
     assert captured.err == ""
-    assert "✗ Describing images" in stream.getvalue()
-    assert "2/4 elementi" in stream.getvalue()
+    assert stream.getvalue() == "\n"

@@ -519,6 +519,16 @@ def test_detect_default_is_readable_and_does_not_present_a_probability(monkeypat
     assert "profile_confidence" not in output
 
 
+def test_root_help_uses_complete_copyable_examples(capsys):
+    cli.build_parser().print_help()
+    output = capsys.readouterr().out
+    assert "manual-ingestion detect examples/synthetic-manual.pdf" in output
+    assert "manual-ingestion validate examples/synthetic-bundle" in output
+    assert "manual-ingestion ingest --help" in output
+    assert "<command>" not in output
+    assert "manual-ingestion detect manual.pdf" not in output
+
+
 def test_validation_default_shows_failed_checks(monkeypatch, capsys):
     monkeypatch.setattr(cli, "validate_run_bundle", lambda _: _validation(passed=False))
     assert cli.main(["validate", "bundle"]) == 1

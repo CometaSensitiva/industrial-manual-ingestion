@@ -10,12 +10,33 @@ One Python CLI processes the document. A read-only browser viewer connects each 
 
 ## Quick start
 
-Requires **Python 3.12**. Install the CLI and digital PDF parser:
+Requires **Python 3.12**. From a terminal, move into the folder where you cloned or downloaded the project. If you followed the suggested folder name, the command is:
+
+```sh
+cd /path/to/industrial-manual-ingestion
+```
+
+Replace `/path/to` with the actual parent folder. On macOS, you can type `cd ` and drag the `industrial-manual-ingestion` folder into the terminal to insert its exact path.
+
+For the first setup, create the environment and install the CLI with the digital PDF parser:
 
 ```sh
 python3.12 -m venv .venv
 source .venv/bin/activate
 pip install '.[docling]'
+```
+
+On later sessions, enter the project directory, activate the existing environment and open the guided help:
+
+```sh
+cd /path/to/industrial-manual-ingestion
+source .venv/bin/activate
+manual-ingestion --help
+```
+
+The help includes complete commands that can be copied directly. To try the included public example:
+
+```sh
 manual-ingestion detect examples/synthetic-manual.pdf
 manual-ingestion validate examples/synthetic-bundle
 ```
@@ -42,7 +63,7 @@ manual-ingestion schema manual
 
 The interface and help are in English. `--language` records the document language; the preserved technical-caption prompt currently requests Italian fields, so Qwen descriptions may be in Italian.
 
-Normal output is a concise human summary. `--json` gives machine-readable stdout; progress and library logs go to stderr. `--verbose` enables additional details. `--help` lists options for each command.
+Normal output is a concise human summary with a compact branded help screen. `--json` gives undecorated machine-readable stdout; progress and library logs go to stderr. `--verbose` enables additional details. Run `manual-ingestion --help` for guided examples and `manual-ingestion <command> --help` for command-specific options.
 
 `--pages 1-3,5` processes a diagnostic subset. `--no-enrich` skips image descriptions. Both produce an experimental bundle. The destination must not already exist. `--write-failure-report` saves a report beside the destination on failure.
 
@@ -53,7 +74,7 @@ Scanned PDFs use an isolated PaddleOCR-VL runtime, configured with `--paddle-pyt
 The public viewer opens a synthetic example automatically. Use **Open bundle** to choose a local folder or enter an HTTP(S) URL. Local folders are read in the browser and are not uploaded. A remote server must allow cross-origin reads.
 
 - **Overview:** document route, content counts and warnings.
-- **Inspect:** document tree, source page, bounding boxes and extracted content.
+- **Inspect:** document tree, source page, always-visible bounding boxes and extracted content. Images, tables, text and titles use the restrained accent palette inherited from the original research viewer.
 - **Validation:** published software checks, provenance and JSON.
 
 The source-text panel shows fields attached to the selected element, not a reconstruction of an external retrieval system. Missing page rasters are optional; the crop and extracted content can still be inspected.

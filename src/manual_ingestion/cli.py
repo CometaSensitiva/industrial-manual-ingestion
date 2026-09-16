@@ -7,7 +7,7 @@ import json
 import re
 import sys
 import traceback
-from .cli_display import operational_output, show_detection, show_validation, show_outcome
+from .cli_display import PresentationParser, operational_output, show_detection, show_validation, show_outcome
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -69,7 +69,7 @@ def parse_pages(value: str) -> list[int]:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
+    parser = PresentationParser(
         prog="manual-ingestion",
         description="Automatically ingest and validate an industrial manual PDF.",
     )
