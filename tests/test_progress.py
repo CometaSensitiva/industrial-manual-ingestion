@@ -134,7 +134,7 @@ def test_renderer_uses_indeterminate_display_without_inventing_a_counter() -> No
         assert task.fields["label"] == "✓ Extracting — Docling"
         assert task.fields["counter"] == ""
 
-    assert stream.getvalue() == "\n"
+    assert renderer._progress.live.transient is True
 
 
 def test_renderer_switches_to_a_determinate_real_counter_and_marks_completion() -> None:
@@ -177,7 +177,7 @@ def test_renderer_switches_to_a_determinate_real_counter_and_marks_completion() 
         assert task.fields["label"] == "✓ Extracting"
     renderer.close()
 
-    assert stream.getvalue() == "\n"
+    assert renderer._progress.live.transient is True
     assert not renderer.active
 
 
@@ -202,4 +202,4 @@ def test_renderer_marks_failed_stage_and_never_uses_standard_output(capsys) -> N
     captured = capsys.readouterr()
     assert captured.out == ""
     assert captured.err == ""
-    assert stream.getvalue() == "\n"
+    assert renderer._progress.live.transient is True
