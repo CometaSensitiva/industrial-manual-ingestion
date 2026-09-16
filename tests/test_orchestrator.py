@@ -110,6 +110,11 @@ class FakeProvider:
         )
 
 
+class FakeDigitalResult(ProfileResult):
+    # This fixture simulates Docling; tests must not require its heavyweight runtime.
+    runtime = {"docling": validation_module.ACCEPTED_DOCLING_VERSION}
+
+
 class FakeProfile:
     def __init__(
         self,
@@ -299,7 +304,7 @@ class FakeProfile:
                     "paddlex": "3.7.2",
                 },
             )
-        return ProfileResult(
+        return FakeDigitalResult(
             **result_args,
         )
 
