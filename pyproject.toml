@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools==83.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "industrial-manual-ingestion"
+version = "1.0.0"
+description = "Local structured and multimodal ingestion for industrial technical manuals"
+readme = "README.md"
+license = "MIT"
+requires-python = "==3.12.*"
+dependencies = [
+  "pydantic==2.13.4",
+  "PyMuPDF==1.28.0",
+  "Pillow==11.3.0",
+  "rich==15.0.0",
+]
+
+[project.optional-dependencies]
+docling = [
+  "docling==2.112.0",
+]
+dev = [
+  "pytest==9.1.1",
+]
+
+[project.scripts]
+manual-ingestion = "manual_ingestion.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["manual_ingestion*"]
+namespaces = false
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
