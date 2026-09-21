@@ -830,3 +830,168 @@ footer {
   border: 2px solid var(--element-accent, #5d6673);
   background: color-mix(in srgb, var(--element-accent, #5d6673) 8%, transparent);
 }
+
+/* Preserve the manual hierarchy instead of presenting a visually flat list. */
+.inspect-view .tree-items,
+.inspect-view .tree-items ul {
+  display: block;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.inspect-view .tree-items {
+  padding: 0 8px 12px;
+  overflow: visible;
+}
+.inspect-view .tree-branch {
+  position: relative;
+}
+.inspect-view .tree-branch > ul {
+  position: relative;
+  margin-left: 13px;
+  padding-left: 13px;
+  border-left: 1px solid #d9dde3;
+}
+.inspect-view .tree-branch > ul > .tree-branch::before {
+  content: "";
+  position: absolute;
+  top: 17px;
+  left: -13px;
+  width: 11px;
+  border-top: 1px solid #d9dde3;
+}
+.inspect-view .tree-branch > ul > .tree-branch:last-child::after {
+  content: "";
+  position: absolute;
+  top: 18px;
+  bottom: 0;
+  left: -14px;
+  width: 2px;
+  background: #fff;
+}
+.inspect-view .tree-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 2px;
+}
+.inspect-view .tree-items .branch-toggle {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 22px;
+  width: 22px;
+  min-width: 22px;
+  height: 28px;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-left: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #747b85;
+  font-size: 17px;
+  line-height: 1;
+}
+.inspect-view .tree-items .branch-toggle:hover {
+  background: #f0f1f4;
+  color: #20252c;
+}
+.inspect-view .branch-spacer {
+  flex: 0 0 22px;
+  width: 22px;
+}
+.inspect-view .tree-items .tree-node {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  margin: 1px 0;
+  padding: 7px 8px;
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: transparent;
+  color: #646b73;
+  text-align: left;
+  font-size: 12px;
+}
+.inspect-view .tree-items .tree-node.chapter-node {
+  margin-top: 4px;
+  font-weight: 650;
+  color: #30363d;
+}
+.inspect-view .tree-items .tree-node:hover {
+  background: #f4f5f7;
+}
+.inspect-view .tree-items .tree-node.selected {
+  color: var(--element-accent);
+  border-left-color: var(--element-accent);
+  background: var(--element-wash);
+}
+.inspect-view .tree-items .tree-node .node-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.inspect-view .tree-items .tree-node small {
+  flex: 0 0 auto;
+}
+
+/* Compact labels make every source region identifiable before selection. */
+.inspect-view .bbox {
+  overflow: visible;
+  border-width: 2px;
+  border-color: color-mix(in srgb, var(--element-accent, #5d6673) 46%, transparent);
+  z-index: 1;
+}
+.inspect-view .bbox:hover {
+  z-index: 2;
+}
+.inspect-view .bbox.active {
+  border-width: 3px;
+  z-index: 3;
+}
+.inspect-view .bbox-label {
+  position: absolute;
+  left: -2px;
+  top: -19px;
+  display: block;
+  padding: 3px 6px 2px;
+  border-radius: 4px 4px 0 0;
+  background: color-mix(in srgb, var(--element-accent, #5d6673) 82%, white);
+  color: white;
+  font: 650 9px/1.15 "Helvetica Neue", system-ui, sans-serif;
+  letter-spacing: .45px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: .78;
+  box-shadow: 0 1px 2px rgba(17, 19, 24, .12);
+  pointer-events: none;
+}
+.inspect-view .bbox:hover .bbox-label,
+.inspect-view .bbox.active .bbox-label {
+  opacity: 1;
+  background: var(--element-accent, #5d6673);
+}
+
+@media (max-width: 650px) {
+  .inspect-view .tree-items {
+    display: block;
+    overflow: visible;
+  }
+  .inspect-view .tree-items .tree-node {
+    min-width: 0;
+    max-width: none;
+    padding: 7px 8px !important;
+  }
+  .inspect-view .tree-items .branch-toggle {
+    min-width: 22px;
+    max-width: 22px;
+  }
+}

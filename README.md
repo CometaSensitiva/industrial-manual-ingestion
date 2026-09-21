@@ -78,7 +78,7 @@ Scanned PDFs use an isolated PaddleOCR-VL runtime, configured with `--paddle-pyt
 The public viewer opens a synthetic example automatically. Use **Open bundle** to choose a local folder or enter an HTTP(S) URL. Local folders are read in the browser and are not uploaded. A remote server must allow cross-origin reads.
 
 - **Overview:** document route, content counts and warnings.
-- **Inspect:** document tree, source page, always-visible bounding boxes and extracted content. Images, tables, text and titles use the restrained accent palette inherited from the original research viewer.
+- **Inspect:** collapsible document hierarchy, source page, labeled bounding boxes and extracted content. Images, tables, text and titles use the restrained accent palette inherited from the original research viewer.
 - **Validation:** published software checks, provenance and JSON.
 
 The source-text panel shows fields attached to the selected element, not a reconstruction of an external retrieval system. Add `--page-previews` during ingestion to inspect complete source pages and bounding boxes. Without it, available crops and extracted content remain inspectable.

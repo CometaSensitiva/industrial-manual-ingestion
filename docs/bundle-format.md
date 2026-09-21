@@ -17,7 +17,7 @@ Print the authoritative schemas with `manual-ingestion schema manual` and `manua
 
 An element carries its source page and, when available, bounding box and page size. Images reference a crop, original caption, generated caption and generation provenance. Tables retain Markdown and header-value serialized rows. `trace.include_in_rag` records retrieval eligibility; it is distinct from presence in the JSON bundle.
 
-The viewer reads source `text` and `caption_original` independently of `caption_generated`. It never treats the existence of an image file as textual baseline information. Other text on the page remains separate records. In Inspect, every available bounding box remains lightly visible; selecting a record increases its emphasis without changing the underlying bundle.
+The viewer reads source `text` and `caption_original` independently of `caption_generated`. It never treats the existence of an image file as textual baseline information. Other text on the page remains separate records. In Inspect, the manual keeps its collapsible chapter hierarchy and every available bounding box is labeled by element type. Selecting a record increases its emphasis without changing the underlying bundle.
 
 Page previews use `assets/pages/page_0001.png` (one-based, four digits). They are optional display artifacts produced with `manual-ingestion ingest ... --page-previews`; they do not change extraction, enrichment or validation results. Only processed pages are rendered.
 

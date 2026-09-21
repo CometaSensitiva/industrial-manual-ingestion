@@ -19,6 +19,141 @@ function flatten(
   ]);
 }
 const label = (text: string) => text.replaceAll("_", " ");
+
+function nodeText(node: ManualNode): string {
+  return node.type === "chapter"
+    ? node.title
+    : [node.text, node.caption_original, node.id, node.type]
+        .filter(Boolean)
+        .join(" ");
+}
+
+function treeMatches(node: ManualNode, query: string): boolean {
+  if (!query) return true;
+  if (nodeText(node).toLowerCase().includes(query)) return true;
+  return node.type === "chapter"
+    ? node.content.some((child) => treeMatches(child, query))
+    : false;
+}
+
+function TreeNode({
+  node,
+  selected,
+  query,
+  collapsed,
+  onSelect,
+  onToggle,
+}: {
+  node: ManualNode;
+  selected: string | undefined;
+  query: string;
+  collapsed: Set<string>;
+  onSelect: (node: ManualNode) => void;
+  onToggle: (id: string) => void;
+}) {
+  const isChapter = node.type === "chapter";
+  const hasChildren = isChapter && node.content.length > 0;
+  const directMatch = nodeText(node).toLowerCase().includes(query);
+  const childQuery = directMatch ? "" : query;
+  const children = isChapter
+    ? node.content.filter((child) => treeMatches(child, childQuery))
+    : [];
+  const isCollapsed = !query && collapsed.has(node.id);
+
+  return (
+    <li className={`tree-branch ${isChapter ? "is-chapter" : "is-element"}`}>
+      <div className="tree-row">
+        {hasChildren ? (
+          <button
+            className="branch-toggle"
+            aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${nodeText(node)}`}
+            aria-expanded={!isCollapsed}
+            onClick={() => onToggle(node.id)}
+          >
+            <span aria-hidden="true">{isCollapsed ? "›" : "⌄"}</span>
+          </button>
+        ) : (
+          <span className="branch-spacer" aria-hidden="true" />
+        )}
+        <button
+          data-type={node.type}
+          className={`tree-node ${isChapter ? "chapter-node" : "element-node"} ${selected === node.id ? "selected" : ""}`}
+          onClick={() => onSelect(node)}
+          title={isChapter ? node.title : node.id}
+          aria-pressed={selected === node.id}
+        >
+          <span className="node-type" aria-hidden="true">
+            {isChapter
+              ? "§"
+              : node.type === "image"
+                ? "▧"
+                : node.type === "table"
+                  ? "▦"
+                  : "·"}
+          </span>
+          <span className="node-label">
+            {isChapter
+              ? node.title
+              : node.caption_original ||
+                node.text?.slice(0, 64) ||
+                `${label(node.type)} · page ${node.page}`}
+          </span>
+          <small>{node.page}</small>
+        </button>
+      </div>
+      {hasChildren && !isCollapsed && (
+        <ul role="group">
+          {children.map((child) => (
+            <TreeNode
+              key={child.id}
+              node={child}
+              selected={selected}
+              query={childQuery}
+              collapsed={collapsed}
+              onSelect={onSelect}
+              onToggle={onToggle}
+            />
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
+
+function DocumentTree({
+  nodes,
+  selected,
+  query,
+  collapsed,
+  onSelect,
+  onToggle,
+}: {
+  nodes: ManualNode[];
+  selected: string | undefined;
+  query: string;
+  collapsed: Set<string>;
+  onSelect: (node: ManualNode) => void;
+  onToggle: (id: string) => void;
+}) {
+  const normalizedQuery = query.trim().toLowerCase();
+  return (
+    <ul className="tree-items" role="tree" aria-label="Document structure">
+      {nodes
+        .filter((node) => treeMatches(node, normalizedQuery))
+        .map((node) => (
+          <TreeNode
+            key={node.id}
+            node={node}
+            selected={selected}
+            query={normalizedQuery}
+            collapsed={collapsed}
+            onSelect={onSelect}
+            onToggle={onToggle}
+          />
+        ))}
+    </ul>
+  );
+}
 function Preview({
   url,
   alt,
@@ -213,6 +348,7 @@ function Workbench({ bundle }: { bundle: LoadedRunBundle }) {
       nodes[0]?.node.id,
   );
   const [query, setQuery] = useState("");
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
   const [sourceView, setSourceView] = useState<"Page" | "Crop">("Page");
   const [zoom, setZoom] = useState(1);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -343,52 +479,24 @@ function Workbench({ bundle }: { bundle: LoadedRunBundle }) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
-            <div className="tree-items">
-              {nodes
-                .filter(
-                  ({ node }) =>
-                    !query ||
-                    JSON.stringify(
-                      node.type === "chapter"
-                        ? node.title
-                        : [node.text, node.caption_original, node.id],
-                    )
-                      .toLowerCase()
-                      .includes(query.toLowerCase()),
-                )
-                .map(({ node, depth }) => (
-                  <button
-                    key={node.id}
-                    data-type={node.type}
-                    className={`${node.type === "chapter" ? "chapter-node" : "element-node"} ${selected === node.id ? "selected" : ""}`}
-                    style={{ paddingLeft: `${12 + Math.min(depth, 3) * 10}px` }}
-                    onClick={() => {
-                      setSelected(node.id);
-                      setZoom(1);
-                    }}
-                    title={node.type === "chapter" ? node.title : node.id}
-                    aria-pressed={selected === node.id}
-                  >
-                    <span className="node-type">
-                      {node.type === "chapter"
-                        ? "§"
-                        : node.type === "image"
-                          ? "▧"
-                          : node.type === "table"
-                            ? "▦"
-                            : "·"}
-                    </span>
-                    <span>
-                      {node.type === "chapter"
-                        ? node.title
-                        : node.caption_original ||
-                          node.text?.slice(0, 64) ||
-                          `${label(node.type)} · page ${node.page}`}
-                    </span>
-                    <small>{node.page}</small>
-                  </button>
-                ))}
-            </div>
+            <DocumentTree
+              nodes={bundle.manual.content}
+              selected={selected}
+              query={query}
+              collapsed={collapsed}
+              onSelect={(selectedNode) => {
+                setSelected(selectedNode.id);
+                setZoom(1);
+              }}
+              onToggle={(id) =>
+                setCollapsed((current) => {
+                  const next = new Set(current);
+                  if (next.has(id)) next.delete(id);
+                  else next.add(id);
+                  return next;
+                })
+              }
+            />
           </aside>
           <section className="source-panel" aria-label="Original document">
             <div className="source-toolbar">
@@ -470,7 +578,11 @@ function Workbench({ bundle }: { bundle: LoadedRunBundle }) {
                               height: `${box.height}%`,
                             }}
                             onClick={() => setSelected(el.id)}
-                          />
+                          >
+                            <span className="bbox-label" aria-hidden="true">
+                              {label(el.type)}
+                            </span>
+                          </button>
                         ) : null;
                       })}
                 </Preview>
