@@ -8,6 +8,9 @@ import {
 } from "./lib/bundleSource";
 import { bboxToPercentage } from "./lib/geometry";
 
+import { Overview } from "./Overview";
+import { BRAND_ASCII } from "./brand";
+
 type View = "Overview" | "Inspect" | "Validation";
 function flatten(
   nodes: ManualNode[],
@@ -366,8 +369,6 @@ function Workbench({ bundle }: { bundle: LoadedRunBundle }) {
   useEffect(() => {
     canvasRef.current?.scrollTo({ top: 0, left: 0 });
   }, [imageUrl]);
-  const images = nodes.filter(({ node }) => node.type === "image");
-  const tables = nodes.filter(({ node }) => node.type === "table");
   const processed = manual.metadata.pages_processed;
   function movePage(delta: number) {
     const index = Math.max(0, processed.indexOf(page));
@@ -410,62 +411,14 @@ function Workbench({ bundle }: { bundle: LoadedRunBundle }) {
         ))}
       </nav>
       {view === "Overview" && (
-        <div className="overview">
-          <span className="eyebrow">DOCUMENT OVERVIEW</span>
-          <h2>Document summary</h2>
-          <p>
-            Source pages, extracted content and image descriptions in one bundle.
-          </p>
-          <div className="flow">
-            <span>PDF</span>
-            <b>→</b>
-            <span>Structure & content</span>
-            <b>→</b>
-            <span>Image descriptions</span>
-            <b>→</b>
-            <span>Checked bundle</span>
-          </div>
-          <div className="facts">
-            <div>
-              <strong>{processed.length}</strong>
-              <span>processed pages</span>
-            </div>
-            <div>
-              <strong>{images.length}</strong>
-              <span>images</span>
-            </div>
-            <div>
-              <strong>{tables.length}</strong>
-              <span>structured tables</span>
-            </div>
-          </div>
-          <h3>How this document was processed</h3>
-          <p>
-            {label(manifest.pipeline.profile)} · {manifest.pipeline.parser} ·{" "}
-            {label(manifest.pipeline.structure_strategy)}
-          </p>
-          <details>
-            <summary>Detection details</summary>
-          <ul>
-            {manifest.source.detected.reasons.map((reason, i) => (
-              <li key={i}>{reason}</li>
-            ))}
-          </ul>
-          </details>
-          <button className="primary" onClick={() => setView("Inspect")}>
-            Explore the document →
-          </button>
-          <p className="note">
-            Validation checks the software contract. It does not certify the
-            meaning or accuracy of AI-generated text.
-          </p>
-          <details>
-            <summary>Run warnings ({manifest.warnings.length})</summary>
-            {manifest.warnings.map((warning, i) => (
-              <p key={i}>{warning}</p>
-            ))}
-          </details>
-        </div>
+        <Overview
+          bundle={bundle}
+          onInspect={(id) => {
+            if (id) { setSelected(id); setSourceView("Page"); setZoom(1); }
+            setView("Inspect");
+          }}
+          onValidate={() => setView("Validation")}
+        />
       )}
       {view === "Inspect" && (
         <div className="workspace">
@@ -735,11 +688,7 @@ export function App() {
           className="brand"
           href="https://github.com/CometaSensitiva/industrial-manual-ingestion"
         >
-          <span className="brand-ascii" aria-hidden="true">{`    .-.
- .-*#%%*.
-:+%@%#**+
- =#%#*+=
-  +**+=`}</span>
+          <span className="brand-mark" aria-hidden="true"><span className="brand-ascii">{BRAND_ASCII}</span></span>
           <span>
             Industrial Manual Ingestion<small>BUNDLE VIEWER</small>
           </span>
