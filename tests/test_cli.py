@@ -89,6 +89,7 @@ def test_ingest_cli_exposes_no_technology_choice_flags() -> None:
         "--ollama-url",
         "--paddle-python",
         "--paddle-cache",
+        "--page-previews",
         "--no-enrich",
         "--no-progress",
         "--write-failure-report",
@@ -200,6 +201,7 @@ def test_ingest_forwards_user_inputs_and_builds_the_fixed_runtime_contract(
             "/opt/paddle/bin/python",
             "--paddle-cache",
             "/var/cache/paddlex",
+            "--page-previews",
         ]
     )
 
@@ -210,6 +212,7 @@ def test_ingest_forwards_user_inputs_and_builds_the_fixed_runtime_contract(
     assert captured["pages"] == [1, 2, 3, 5]
     assert captured["title"] == "Manuale scelto"
     assert captured["language"] == "en"
+    assert captured["page_previews"] is True
     assert callable(captured["progress"])
 
     provider = captured["provider"]
@@ -256,6 +259,7 @@ def test_ingest_uses_fixed_default_provider_and_no_paddle_override(
     assert captured["pages"] is None
     assert captured["title"] is None
     assert captured["language"] == "en"
+    assert captured["page_previews"] is False
     assert callable(captured["progress"])
     assert json.loads(capsys.readouterr().out)["run_id"] == "generated-run"
 
@@ -522,11 +526,37 @@ def test_detect_default_is_readable_and_does_not_present_a_probability(monkeypat
 def test_root_help_uses_complete_copyable_examples(capsys):
     cli.build_parser().print_help()
     output = capsys.readouterr().out
-    assert "manual-ingestion detect examples/synthetic-manual.pdf" in output
-    assert "manual-ingestion validate examples/synthetic-bundle" in output
+    flattened = " ".join(output.split())
+    assert "manual-ingestion detect examples/synthetic-manual.pdf" in flattened
+    assert "--out my-first-bundle --no-enrich --page-previews" in flattened
+    assert "manual-ingestion validate my-first-bundle" in flattened
     assert "manual-ingestion ingest --help" in output
     assert "<command>" not in output
     assert "manual-ingestion detect manual.pdf" not in output
+
+
+def test_ingest_help_is_task_oriented_and_explains_multiline_commands(capsys):
+    parser = cli.build_parser()
+    ingest = parser._subparsers._group_actions[0].choices["ingest"]
+
+    ingest.print_help()
+
+    output = capsys.readouterr().out
+    flattened = " ".join(output.split())
+    assert "manual-ingestion ingest PDF --out NEW_BUNDLE" in flattened
+    assert "--page-previews" in output
+    assert "The output folder must not exist yet" in flattened
+    assert "must be the final character" in flattened
+
+
+def test_missing_output_shows_a_copyable_ingest_command(capsys):
+    with pytest.raises(SystemExit) as error:
+        cli.main(["ingest", "manual.pdf"])
+
+    assert error.value.code == 2
+    output = capsys.readouterr().err
+    assert "Command not understood" in output
+    assert "manual-ingestion ingest PDF --out NEW_BUNDLE" in output
 
 
 def test_validation_default_shows_failed_checks(monkeypatch, capsys):
@@ -539,13 +569,18 @@ def test_validation_default_shows_failed_checks(monkeypatch, capsys):
 
 def test_human_ingest_summary_reads_published_content(monkeypatch, capsys, tmp_path):
     outcome = _outcome(tmp_path)
-    outcome.manifest.artifacts = SimpleNamespace(manual="manual.json")
+    outcome.manifest.artifacts = SimpleNamespace(
+        manual="manual.json",
+        assets="assets",
+    )
     outcome.manifest.warnings = []
     (tmp_path / "manual.json").write_text(json.dumps({"metadata": {"pages_processed": [1]}, "content": [{"type":"image", "caption_generated":"Description"}]}))
     monkeypatch.setattr(cli, "ingest_manual", lambda *args, **kwargs: outcome)
     assert cli.main(["ingest", "source.pdf", "--out", str(tmp_path)]) == 0
     output = capsys.readouterr().out
     assert "Bundle ready" in output
+    assert "Page previews" in output
+    assert "0/1" in output
     assert "1/1" in output
     assert "Included in bundle" in output
 

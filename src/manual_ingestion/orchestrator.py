@@ -84,6 +84,7 @@ from .validation import build_validation_report, validate_run_bundle
 # Backward-compatible module attribute. The durable evidence ID in
 # ``promotion.py`` is the actual shared policy input.
 SCANNED_OCR_ACCEPTANCE_PASSED = SCANNED_OCR_ACCEPTANCE_EVIDENCE_ID is not None
+PAGE_PREVIEW_SCALE = 1.5
 
 
 class IngestionError(RuntimeError):
@@ -189,6 +190,7 @@ def ingest_manual(
     title: str | None = None,
     language: str = "en",
     paddle_runtime: PaddleRuntimeConfig | None = None,
+    page_previews: bool = False,
     progress: ProgressCallback | None = None,
 ) -> IngestionOutcome:
     """Public fixed-routing entry point used by the CLI and integrations."""
@@ -202,6 +204,7 @@ def ingest_manual(
         title=title,
         language=language,
         paddle_runtime=paddle_runtime,
+        page_previews=page_previews,
         progress=progress,
         detector=detect_pdf_capabilities,
         profile_builder=build_profile,
@@ -219,6 +222,7 @@ def _ingest_manual(
     title: str | None = None,
     language: str = "en",
     paddle_runtime: PaddleRuntimeConfig | None = None,
+    page_previews: bool = False,
     progress: ProgressCallback | None = None,
     detector: Callable[[str | Path], DetectedCapabilities] = detect_pdf_capabilities,
     profile_builder: ProfileBuilder = build_profile,
@@ -236,6 +240,7 @@ def _ingest_manual(
             title=title,
             language=language,
             paddle_runtime=paddle_runtime,
+            page_previews=page_previews,
             progress=progress,
             reporter=reporter,
             detector=detector,
@@ -257,6 +262,7 @@ def _run_ingestion(
     title: str | None,
     language: str,
     paddle_runtime: PaddleRuntimeConfig | None,
+    page_previews: bool,
     progress: ProgressCallback | None,
     reporter: _ProgressReporter,
     detector: Callable[[str | Path], DetectedCapabilities],
@@ -340,6 +346,12 @@ def _run_ingestion(
             language=language,
             requested_title=title,
         )
+        if page_previews:
+            _render_page_previews(
+                source,
+                workspace.assets_dir / "pages",
+                selected_pages,
+            )
         _ensure_source_unchanged(source, initial_fingerprint)
         reporter.complete()
 
@@ -633,6 +645,29 @@ def _inspect_pdf_page_count(source: Path) -> int:
         raise
     except Exception as exc:
         raise ValueError(f"cannot inspect source PDF: {exc}") from exc
+
+
+def _render_page_previews(
+    source: Path,
+    pages_dir: Path,
+    pages: list[int],
+) -> None:
+    """Render optional viewer previews without replacing profile-owned pages."""
+
+    pages_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        with pymupdf.open(source) as document:
+            matrix = pymupdf.Matrix(PAGE_PREVIEW_SCALE, PAGE_PREVIEW_SCALE)
+            for page_number in pages:
+                target = pages_dir / f"page_{page_number:04d}.png"
+                if target.is_file():
+                    continue
+                if target.exists():
+                    raise ValueError(f"page preview path is not a file: {target}")
+                page = document.load_page(page_number - 1)
+                page.get_pixmap(matrix=matrix, alpha=False).save(target)
+    except (OSError, RuntimeError, ValueError, pymupdf.FileDataError) as exc:
+        raise IngestionError(f"cannot render page previews: {exc}") from exc
 
 
 def _validate_pages(pages: list[int] | None, pages_total: int) -> list[int]:

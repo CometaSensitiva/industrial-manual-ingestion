@@ -38,14 +38,18 @@ The help includes complete commands that can be copied directly. To try the incl
 
 ```sh
 manual-ingestion detect examples/synthetic-manual.pdf
+manual-ingestion ingest examples/synthetic-manual.pdf --out my-first-bundle --no-enrich --page-previews
+manual-ingestion validate my-first-bundle
 manual-ingestion validate examples/synthetic-bundle
 ```
+
+The first bundle is intentionally created without Qwen so you can test the complete flow immediately. Its status is therefore `experimental`. The output folder must not already exist.
 
 For image enrichment, run **Ollama 0.34.0** with **qwen3.5:4b**. The backend verifies the runtime and model digest; these are deliberately fixed for reproducible output.
 
 ```sh
 ollama pull qwen3.5:4b
-manual-ingestion ingest examples/synthetic-manual.pdf --out runs/my-manual
+manual-ingestion ingest examples/synthetic-manual.pdf --out runs/my-manual --page-previews
 ```
 
 First-time parsing downloads Docling model weights. Enrichment runs locally. Installation and model downloads require network access; documents are sent only to the configured Ollama endpoint (localhost by default).
@@ -54,7 +58,7 @@ First-time parsing downloads Docling model weights. Enrichment runs locally. Ins
 
 ```sh
 manual-ingestion detect manual.pdf
-manual-ingestion ingest manual.pdf --out runs/manual --language en
+manual-ingestion ingest manual.pdf --out runs/manual --language en --page-previews
 manual-ingestion validate runs/manual
 manual-ingestion detect manual.pdf --json
 manual-ingestion validate runs/manual --verbose
@@ -63,9 +67,9 @@ manual-ingestion schema manual
 
 The interface and help are in English. `--language` records the document language; the preserved technical-caption prompt currently requests Italian fields, so Qwen descriptions may be in Italian.
 
-Normal output is a concise human summary with a compact branded help screen. `--json` gives undecorated machine-readable stdout; progress and library logs go to stderr. `--verbose` enables additional details. Run `manual-ingestion --help` for guided examples and `manual-ingestion <command> --help` for command-specific options.
+Normal output is a concise human summary with branded, task-oriented help. `--json` gives undecorated machine-readable stdout; progress and library logs go to stderr. `--verbose` enables additional details. Run `manual-ingestion --help` for the guided workflow, or use `manual-ingestion ingest --help`, `detect --help`, `validate --help` and `schema --help` for focused instructions.
 
-`--pages 1-3,5` processes a diagnostic subset. `--no-enrich` skips image descriptions. Both produce an experimental bundle. The destination must not already exist. `--write-failure-report` saves a report beside the destination on failure.
+`--page-previews` adds full-page PNGs for the viewer. `--pages 1-3,5` processes a diagnostic subset. `--no-enrich` skips image descriptions. The latter two produce an experimental bundle. The destination must not already exist. `--write-failure-report` saves a report beside the destination on failure.
 
 Scanned PDFs use an isolated PaddleOCR-VL runtime, configured with `--paddle-python` and `--paddle-cache`. See [runtime details](docs/bundle-format.md#scanned-documents). Scanned output remains experimental by default: this release does not claim general acceptance from a private document study.
 
@@ -77,7 +81,7 @@ The public viewer opens a synthetic example automatically. Use **Open bundle** t
 - **Inspect:** document tree, source page, always-visible bounding boxes and extracted content. Images, tables, text and titles use the restrained accent palette inherited from the original research viewer.
 - **Validation:** published software checks, provenance and JSON.
 
-The source-text panel shows fields attached to the selected element, not a reconstruction of an external retrieval system. Missing page rasters are optional; the crop and extracted content can still be inspected.
+The source-text panel shows fields attached to the selected element, not a reconstruction of an external retrieval system. Add `--page-previews` during ingestion to inspect complete source pages and bounding boxes. Without it, available crops and extracted content remain inspectable.
 
 Run locally with Node 22 or later:
 

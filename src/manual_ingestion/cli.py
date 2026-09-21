@@ -7,7 +7,6 @@ import json
 import re
 import sys
 import traceback
-from .cli_display import PresentationParser, operational_output, show_detection, show_validation, show_outcome
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -15,6 +14,13 @@ from pathlib import Path
 
 from . import __version__
 from .adapters.paddle_adapter import PaddleRuntimeConfig
+from .cli_display import (
+    PresentationParser,
+    operational_output,
+    show_detection,
+    show_outcome,
+    show_validation,
+)
 from .cli_progress import RichProgressRenderer
 from .detection import detect_pdf_capabilities
 from .failure_report import build_failure_report, write_failure_report
@@ -112,6 +118,11 @@ def build_parser() -> argparse.ArgumentParser:
     ingest.add_argument("--ollama-url", metavar="URL")
     ingest.add_argument("--paddle-python", metavar="PATH")
     ingest.add_argument("--paddle-cache", type=Path, metavar="DIR")
+    ingest.add_argument(
+        "--page-previews",
+        action="store_true",
+        help="Render full-page PNG previews for the bundle viewer",
+    )
     ingest.add_argument(
         "--no-enrich",
         action="store_true",
@@ -258,6 +269,7 @@ def _run_ingest_command(args: argparse.Namespace) -> int:
                 title=args.title,
                 language=args.language,
                 paddle_runtime=_paddle_runtime(args),
+                page_previews=args.page_previews,
                 progress=progress,
             )
     except KeyboardInterrupt as error:

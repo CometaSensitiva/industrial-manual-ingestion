@@ -58,6 +58,7 @@ Incertezze: nessuna evidente"""
 def test_public_ingestion_api_does_not_expose_routing_or_validator_overrides() -> None:
     parameters = inspect.signature(public_ingest_manual).parameters
     assert "progress" in parameters
+    assert "page_previews" in parameters
     assert "detector" not in parameters
     assert "profile_builder" not in parameters
     assert "validator" not in parameters
@@ -352,6 +353,31 @@ def test_full_digital_ingestion_publishes_validated_atomic_bundle(tmp_path: Path
     assert structure["details_available"] is False
     manual = json.loads((target / "manual.json").read_text(encoding="utf-8"))
     assert manual["content"][0]["content"][0]["caption_generated"] == VALID_CAPTION
+
+
+def test_requested_page_previews_are_rendered_inside_the_bundle(tmp_path: Path) -> None:
+    source = _pdf(tmp_path / "manual.pdf", pages=2)
+    target = tmp_path / "run"
+    detected = _detected(DocumentProfile.DIGITAL_OUTLINE)
+
+    ingest_manual(
+        source,
+        target,
+        run_id="run-1",
+        provider=FakeProvider(),
+        page_previews=True,
+        detector=lambda path: detected,
+        profile_builder=_builder(
+            FakeProfile(DocumentProfile.DIGITAL_OUTLINE),
+            detected,
+        ),
+    )
+
+    previews = sorted((target / "assets" / "pages").glob("page_*.png"))
+    assert [path.name for path in previews] == ["page_0001.png", "page_0002.png"]
+    preview = pymupdf.Pixmap(previews[0])
+    assert preview.width == 450
+    assert preview.height == 600
 
 
 def test_progress_reports_the_complete_successful_pipeline_in_order(

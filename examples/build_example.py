@@ -65,10 +65,7 @@ def make_source():
 def main():
     if BUNDLE.exists(): raise SystemExit("Example bundle already exists. Move it aside before deliberately regenerating.")
     make_source()
-    outcome=ingest_manual(PDF,BUNDLE,run_id="synthetic-example",provider=OllamaCaptionProvider(),language="en",title="CP-01 · Demonstration manual")
-    pages=BUNDLE/"assets/pages"; pages.mkdir(exist_ok=True)
-    with pymupdf.open(PDF) as doc:
-        for i,page in enumerate(doc): page.get_pixmap(matrix=pymupdf.Matrix(1.5,1.5)).save(pages/f"page_{i+1:04d}.png")
+    outcome=ingest_manual(PDF,BUNDLE,run_id="synthetic-example",provider=OllamaCaptionProvider(),language="en",title="CP-01 · Demonstration manual",page_previews=True)
     report=build_validation_report(BUNDLE)
     (BUNDLE/"validation.json").write_text(report.model_dump_json(indent=2)+"\n")
     report=validate_run_bundle(BUNDLE)

@@ -19,7 +19,7 @@ An element carries its source page and, when available, bounding box and page si
 
 The viewer reads source `text` and `caption_original` independently of `caption_generated`. It never treats the existence of an image file as textual baseline information. Other text on the page remains separate records. In Inspect, every available bounding box remains lightly visible; selecting a record increases its emphasis without changing the underlying bundle.
 
-Page previews use `assets/pages/page_0001.png` (one-based, four digits). These are optional display artifacts. In the public example they are rendered from the synthetic source after ingestion and do not change experimental results.
+Page previews use `assets/pages/page_0001.png` (one-based, four digits). They are optional display artifacts produced with `manual-ingestion ingest ... --page-previews`; they do not change extraction, enrichment or validation results. Only processed pages are rendered.
 
 ## Status
 
@@ -58,4 +58,4 @@ With the digital parser installed and the required Ollama setup running:
 python examples/build_example.py
 ```
 
-The script creates the synthetic source, calls the public ingestion API, renders page previews and validates the published bundle. It refuses to overwrite an existing bundle: move the existing example aside before deliberately regenerating it. Generated diagnostic timestamps and timing fields naturally differ between runs.
+The script creates the synthetic source, calls the public ingestion API with page previews enabled and validates the published bundle. It refuses to overwrite an existing bundle: move the existing example aside before deliberately regenerating it. Generated diagnostic timestamps and timing fields naturally differ between runs.
