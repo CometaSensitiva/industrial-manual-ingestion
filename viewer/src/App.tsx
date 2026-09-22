@@ -10,7 +10,8 @@ import { bboxToPercentage } from "./lib/geometry";
 
 import { Validation } from "./Validation";
 import { Overview } from "./Overview";
-import { portraitRuns } from "./brand";
+import { portraitCells } from "./brand";
+import { LANGS, LangContext, count, detectLang, rememberLang, translator, useT, type Key, type Lang } from "./i18n";
 
 type View = "Overview" | "Inspect" | "Validation";
 function flatten(
@@ -22,7 +23,6 @@ function flatten(
     ...(node.type === "chapter" ? flatten(node.content, depth + 1) : []),
   ]);
 }
-const label = (text: string) => text.replaceAll("_", " ");
 
 function nodeText(node: ManualNode): string {
   return node.type === "chapter"
@@ -40,6 +40,16 @@ function treeMatches(node: ManualNode, query: string): boolean {
     : false;
 }
 
+function useTypeLabel() {
+  const t = useT();
+  return (type: string) => t(`type.${type}` as Key);
+}
+
+function recordLabel(node: ManualNode, typeLabel: (type: string) => string, pageLabel: (n: number) => string): string {
+  if (node.type === "chapter") return node.title;
+  return node.caption_original || node.text?.slice(0, 64) || `${typeLabel(node.type)} · ${pageLabel(node.page)}`;
+}
+
 function TreeNode({
   node,
   selected,
@@ -55,6 +65,8 @@ function TreeNode({
   onSelect: (node: ManualNode) => void;
   onToggle: (id: string) => void;
 }) {
+  const t = useT();
+  const typeLabel = useTypeLabel();
   const isChapter = node.type === "chapter";
   const hasChildren = isChapter && node.content.length > 0;
   const directMatch = nodeText(node).toLowerCase().includes(query);
@@ -70,7 +82,7 @@ function TreeNode({
         {hasChildren ? (
           <button
             className="branch-toggle"
-            aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${nodeText(node)}`}
+            aria-label={t(isCollapsed ? "expand" : "collapse", { name: nodeText(node) })}
             aria-expanded={!isCollapsed}
             onClick={() => onToggle(node.id)}
           >
@@ -87,20 +99,10 @@ function TreeNode({
           aria-pressed={selected === node.id}
         >
           <span className="node-type" aria-hidden="true">
-            {isChapter
-              ? "§"
-              : node.type === "image"
-                ? "▧"
-                : node.type === "table"
-                  ? "▦"
-                  : "·"}
+            {isChapter ? "§" : node.type === "image" ? "▧" : node.type === "table" ? "▦" : "·"}
           </span>
           <span className="node-label">
-            {isChapter
-              ? node.title
-              : node.caption_original ||
-                node.text?.slice(0, 64) ||
-                `${label(node.type)} · page ${node.page}`}
+            {recordLabel(node, typeLabel, (n) => t("pageLower", { n }))}
           </span>
           <small>{node.page}</small>
         </button>
@@ -139,9 +141,10 @@ function DocumentTree({
   onSelect: (node: ManualNode) => void;
   onToggle: (id: string) => void;
 }) {
+  const t = useT();
   const normalizedQuery = query.trim().toLowerCase();
   return (
-    <ul className="tree-items" aria-label="Document structure">
+    <ul className="tree-items" aria-label={t("documentStructure")}>
       {nodes
         .filter((node) => treeMatches(node, normalizedQuery))
         .map((node) => (
@@ -158,6 +161,7 @@ function DocumentTree({
     </ul>
   );
 }
+
 function Preview({
   url,
   alt,
@@ -167,16 +171,14 @@ function Preview({
   alt: string;
   children?: React.ReactNode;
 }) {
+  const t = useT();
   const [missing, setMissing] = useState(false);
   useEffect(() => setMissing(false), [url]);
   if (!url || missing)
     return (
       <div className="empty-media">
-        <span>Source preview unavailable</span>
-        <small>
-          The bundle does not include this image. Extracted content remains
-          available.
-        </small>
+        <span>{t("previewUnavailable")}</span>
+        <small>{t("previewUnavailableHint")}</small>
       </div>
     );
   return (
@@ -186,20 +188,17 @@ function Preview({
     </div>
   );
 }
-function Raw({
-  value,
-  title = "View JSON",
-}: {
-  value: unknown;
-  title?: string;
-}) {
+
+function Raw({ value, title }: { value: unknown; title?: string }) {
+  const t = useT();
   return (
     <details>
-      <summary>{title}</summary>
+      <summary>{title ?? t("viewJson")}</summary>
       <pre>{JSON.stringify(value, null, 2)}</pre>
     </details>
   );
 }
+
 function Description({ text }: { text: string }) {
   const lines = text.split("\n").filter(Boolean);
   if (!lines.every((line) => line.includes(":")))
@@ -218,6 +217,7 @@ function Description({ text }: { text: string }) {
     </dl>
   );
 }
+
 function TableContent({ markdown }: { markdown: string }) {
   const rows = markdown
     .trim()
@@ -259,38 +259,38 @@ function TableContent({ markdown }: { markdown: string }) {
     </div>
   );
 }
+
 function Record({ element }: { element: ManualElement }) {
+  const t = useT();
+  const typeLabel = useTypeLabel();
   const isTable = element.type === "table";
+  const sourceText = element.text || element.caption_original;
   return (
-    <>
-      <div className="record-heading" data-type={element.type}>
-        <span className="eyebrow">
-          {element.type} / page {element.page}
+    <article className="record" data-type={element.type}>
+      <header className="record-head">
+        <span className="type-chip">{typeLabel(element.type)}</span>
+        <span className="record-meta">{t("pageLower", { n: element.page })}</span>
+        <span className="record-meta">
+          {t(element.trace.include_in_rag ? "inRetrieval" : "excludedRetrieval")}
         </span>
-        <span className="badge">
-          {element.trace.include_in_rag
-            ? "Available to retrieval"
-            : "Excluded from retrieval"}
-        </span>
-      </div>
-      <section className="text-block source-evidence">
-        <div className="eyebrow">SOURCE</div>
-        <h3>Source evidence</h3>
-        <>
-          {isTable && element.table_markdown ? (
-            <TableContent markdown={element.table_markdown} />
-          ) : (
-            <p className="preserve">
-              {element.text ||
-                element.caption_original ||
-                "No source text attached to this element."}
-            </p>
-          )}
-        </>
+      </header>
+      <section className="record-section">
+        <h3 className="label">{t("source")}</h3>
+        {isTable && element.table_markdown ? (
+          <TableContent markdown={element.table_markdown} />
+        ) : sourceText ? (
+          <p className="preserve">{sourceText}</p>
+        ) : (
+          <p className="empty-note">{t("noSource")}</p>
+        )}
+        {!isTable &&
+          element.text &&
+          element.caption_original &&
+          element.text !== element.caption_original && <p>{element.caption_original}</p>}
         {isTable && element.table_serialization && (
           <details>
             <summary>
-              Serialized rows ({element.table_serialization.rows.length})
+              {t("serializedRows")} <span className="summary-count">{element.table_serialization.rows.length}</span>
             </summary>
             {element.table_serialization.rows.map((row) => (
               <p className="table-row" key={row.id}>
@@ -299,286 +299,355 @@ function Record({ element }: { element: ManualElement }) {
             ))}
           </details>
         )}
-        {!isTable &&
-          element.text &&
-          element.caption_original &&
-          element.text !== element.caption_original && (
-            <p>{element.caption_original}</p>
-          )}
-        {element.type === "image" && (
-          <small>
-            The original page or crop is shown alongside. Text above is attached
-            to this element; other page text is available in the document tree.
-          </small>
-        )}
       </section>
       {element.type === "image" && (
-        <section className="text-block generated">
-          <div className="eyebrow">GENERATED / LOCAL MODEL</div>
-          <h3>Qwen description</h3>
+        <section className="record-section generated">
+          <h3 className="label">{t("generated")}</h3>
           {element.caption_generated ? (
             <Description text={element.caption_generated} />
           ) : (
-            <p>No generated description included.</p>
+            <p className="empty-note">{t("noGenerated")}</p>
           )}
-          <small>
-            Generated text may contain errors. Compare it with the original.
-          </small>
+          <p className="note">{t("generatedWarning")}</p>
         </section>
       )}
-      {isTable && (
-        <p className="note">
-          Tables use structured serialization. They are not sent to the vision
-          model.
-        </p>
-      )}
-      {element.trace.exclusion_reason && (
-        <p className="note">{element.trace.exclusion_reason}</p>
-      )}
-      {element.caption_provenance && (
-        <Raw
-          title="Description provenance"
-          value={element.caption_provenance}
-        />
-      )}
-      <Raw value={element} />
-    </>
+      {isTable && <p className="note">{t("tableNote")}</p>}
+      {element.trace.exclusion_reason && <p className="note">{element.trace.exclusion_reason}</p>}
+      <div className="record-raw">
+        {element.caption_provenance && (
+          <Raw title={t("provenance")} value={element.caption_provenance} />
+        )}
+        <Raw value={element} />
+      </div>
+    </article>
   );
 }
-const portraitRows = portraitRuns();
+
+const portrait = portraitCells();
+const TONE_FILL: Record<string, string> = { h: "#d4c6fb", j: "#95a9ff", ".": "#8a8aa3" };
+
+/** The CLI portrait as a halftone: one cell per glyph, legible at icon size. */
+function BrandMark() {
+  return (
+    <span className="brand-mark" aria-hidden="true">
+      <svg viewBox="-2 -1 48 46" width="100%" height="100%">
+        {portrait.map((cell) => (
+          <rect key={`${cell.x}-${cell.y}`} x={cell.x} y={cell.y * 2} width="1" height="2" fill={TONE_FILL[cell.tone] ?? TONE_FILL["."]} opacity={cell.opacity} />
+        ))}
+      </svg>
+    </span>
+  );
+}
+
+const VIEWS: { id: View; label: Key; hash: string }[] = [
+  { id: "Overview", label: "overview", hash: "#overview" },
+  { id: "Inspect", label: "inspect", hash: "#inspect" },
+  { id: "Validation", label: "checks", hash: "#checks" },
+];
+
+function initialView(): View {
+  const hash = typeof window === "undefined" ? "" : window.location.hash;
+  return VIEWS.find((view) => view.hash === hash)?.id ?? "Overview";
+}
+
+function isTyping(target: EventTarget | null) {
+  return target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
+}
 
 function Workbench({ bundle }: { bundle: LoadedRunBundle }) {
-  const [view, setView] = useState<View>("Inspect");
+  const t = useT();
+  const typeLabel = useTypeLabel();
+  const [view, setViewState] = useState<View>(initialView);
   const nodes = flatten(bundle.manual.content);
+  const records = nodes.filter(({ node }) => node.type !== "chapter");
   const [selected, setSelected] = useState(
-    nodes.find(({ node }) => node.type === "image")?.node.id ??
-      nodes[0]?.node.id,
+    nodes.find(({ node }) => node.type === "image")?.node.id ?? nodes[0]?.node.id,
   );
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
+  const [outlineOpen, setOutlineOpen] = useState(false);
   const [sourceView, setSourceView] = useState<"Page" | "Crop">("Page");
   const [zoom, setZoom] = useState(1);
   const canvasRef = useRef<HTMLDivElement>(null);
   const node = nodes.find(({ node }) => node.id === selected)?.node;
   const element = node && node.type !== "chapter" ? node : null;
-  const { manifest, manual, source } = bundle;
+  const { manifest, manual, validation, source } = bundle;
   const asset = (path: string) => source?.url(path) ?? null;
   const page = node?.page ?? manual.metadata.pages_processed[0] ?? 1;
   const pagePath = `${manifest.artifacts.assets}/pages/page_${String(page).padStart(4, "0")}.png`;
   const cropPath = element?.image_path || element?.table_image_path;
   const showingCrop = sourceView === "Crop" && !!cropPath;
   const geometry = element ? bboxToPercentage(element.source) : null;
-  const imageUrl =
-    sourceView === "Crop" && cropPath ? asset(cropPath) : asset(pagePath);
+  const imageUrl = sourceView === "Crop" && cropPath ? asset(cropPath) : asset(pagePath);
+  const processed = manual.metadata.pages_processed;
+  const recordIndex = records.findIndex(({ node }) => node.id === selected);
+  const passed = validation?.checks.filter((check) => check.passed).length ?? 0;
+  const pageLabel = (n: number) => t("pageLower", { n });
+
+  function setView(next: View) {
+    setViewState(next);
+    const hash = VIEWS.find((item) => item.id === next)?.hash;
+    if (hash && window.location.hash !== hash) history.replaceState(null, "", window.location.search + hash);
+  }
+  function select(id: string) {
+    setSelected(id);
+    setZoom(1);
+    setOutlineOpen(false);
+  }
+  function moveRecord(delta: number) {
+    const next = records[Math.max(0, Math.min(records.length - 1, recordIndex + delta))];
+    if (next) select(next.node.id);
+  }
+  function movePage(delta: number) {
+    const index = Math.max(0, processed.indexOf(page));
+    const next = processed[Math.max(0, Math.min(processed.length - 1, index + delta))];
+    const found = records.find(({ node }) => node.page === next);
+    if (found) select(found.node.id);
+  }
   useEffect(() => {
     canvasRef.current?.scrollTo({ top: 0, left: 0 });
   }, [imageUrl]);
-  const processed = manual.metadata.pages_processed;
-  function movePage(delta: number) {
-    const index = Math.max(0, processed.indexOf(page));
-    const next =
-      processed[Math.max(0, Math.min(processed.length - 1, index + delta))];
-    const found = nodes.find(
-      ({ node }) => node.page === next && node.type !== "chapter",
-    );
-    if (found) {
-      setSelected(found.node.id);
-      setZoom(1);
-    }
-  }
+  useEffect(() => {
+    document.title = `${manual.title} · manual-ingestion`;
+  }, [manual.title]);
+  useEffect(() => {
+    if (!outlineOpen) return;
+    const close = (event: KeyboardEvent) => event.key === "Escape" && setOutlineOpen(false);
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [outlineOpen]);
+  // j / k walk the records, like a pager in the terminal.
+  useEffect(() => {
+    if (view !== "Inspect") return;
+    const walk = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey || isTyping(event.target)) return;
+      if (event.key === "j") moveRecord(1);
+      if (event.key === "k") moveRecord(-1);
+    };
+    window.addEventListener("keydown", walk);
+    return () => window.removeEventListener("keydown", walk);
+  });
+
   return (
-    <div className={`product-view ${view === "Inspect" ? "inspect-view" : "summary-view"}`}>
-      <div className="document-bar">
-        <div>
-          <span className="eyebrow">OPEN DOCUMENT</span>
+    <div className={`workbench view-${view.toLowerCase()}`}>
+      <div className="docbar">
+        <div className="doc-title">
           <h1>{manual.title}</h1>
+          <p className="doc-meta">
+            <span>{processed.length === 1 ? t("page1") : t("pages", { n: processed.length })}</span>
+            <span>{t(`profile.${manifest.pipeline.profile}` as Key)}</span>
+            <span className={manifest.status === "validated" ? "ok" : "warn"}>
+              {manifest.status === "validated" ? "[ok]" : "[!]"} {t(`status.${manifest.status}` as Key)}
+            </span>
+            {validation && <span>{t("checksMeta", { p: passed, t: validation.checks.length })}</span>}
+          </p>
         </div>
-        <div className="document-meta">
-          <span>{processed.length} pages</span>
-          <span className="badge">{label(manifest.pipeline.profile)}</span>
-          <span className="badge">
-            {manifest.status === "validated"
-              ? "[ok] reported checks passed"
-              : label(manifest.status)}
-          </span>
-        </div>
+        <nav className="tabs" aria-label={t("workspace")}>
+          {VIEWS.map((item) => (
+            <button
+              key={item.id}
+              aria-current={view === item.id ? "page" : undefined}
+              onClick={() => setView(item.id)}
+            >
+              {t(item.label)}
+            </button>
+          ))}
+        </nav>
       </div>
-      <nav className="tabs" aria-label="Workspace">
-        {(["Overview", "Inspect", "Validation"] as View[]).map((name) => (
-          <button
-            key={name}
-            aria-current={view === name ? "page" : undefined}
-            onClick={() => setView(name)}
-          >
-            {name}
-          </button>
-        ))}
-      </nav>
-      {view === "Overview" && (
-        <Overview
-          bundle={bundle}
-          onInspect={(id) => {
-            if (id) { setSelected(id); setSourceView("Page"); setZoom(1); }
-            setView("Inspect");
-          }}
-          onValidate={() => setView("Validation")}
-        />
-      )}
-      {view === "Inspect" && (
-        <div className="workspace">
-          <aside className="tree">
-            <div className="panel-title">
-              Document <span>{nodes.length} records</span>
+
+      <div className="view" key={view}>
+        {view === "Overview" && (
+          <Overview
+            bundle={bundle}
+            onInspect={(id) => {
+              if (id) { select(id); setSourceView("Page"); }
+              setView("Inspect");
+            }}
+            onValidate={() => setView("Validation")}
+          />
+        )}
+
+        {view === "Inspect" && (
+          <div className="workspace">
+            <div className="record-bar">
+              <button className="outline-toggle" onClick={() => setOutlineOpen(true)} aria-expanded={outlineOpen}>
+                <span aria-hidden="true">☰</span> {t("outline")}
+              </button>
+              <button aria-label={t("prevRecord")} onClick={() => moveRecord(-1)} disabled={recordIndex <= 0}>‹</button>
+              <span className="record-bar-label" data-type={node?.type}>
+                {node ? recordLabel(node, typeLabel, pageLabel) : t("noRecords")}
+              </span>
+              <button aria-label={t("nextRecord")} onClick={() => moveRecord(1)} disabled={recordIndex >= records.length - 1}>›</button>
             </div>
-            <input
-              aria-label="Filter document"
-              placeholder="Find content…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-            <DocumentTree
-              nodes={bundle.manual.content}
-              selected={selected}
-              query={query}
-              collapsed={collapsed}
-              onSelect={(selectedNode) => {
-                setSelected(selectedNode.id);
-                setZoom(1);
-              }}
-              onToggle={(id) =>
-                setCollapsed((current) => {
-                  const next = new Set(current);
-                  if (next.has(id)) next.delete(id);
-                  else next.add(id);
-                  return next;
-                })
-              }
-            />
-          </aside>
-          <section className="source-panel" aria-label="Original document">
-            <div className="source-toolbar">
-              <div>
-                <button
-                  aria-label="Previous page"
-                  onClick={() => movePage(-1)}
-                  disabled={page === processed[0]}
-                >
-                  ←
-                </button>
-                <span>Page {page}</span>
-                <button
-                  aria-label="Next page"
-                  onClick={() => movePage(1)}
-                  disabled={page === processed.at(-1)}
-                >
-                  →
-                </button>
+
+            <aside className={`tree ${outlineOpen ? "open" : ""}`} aria-label={t("outline")}>
+              <div className="panel-title">
+                <span>{t("outline")}</span>
+                <small>{count(t, records.length, "record1", "records")}</small>
+                <button className="sheet-close" aria-label={t("closeOutline")} onClick={() => setOutlineOpen(false)}>×</button>
               </div>
-              <div>
-                {cropPath && (
-                  <button
-                    onClick={() =>
-                      setSourceView(sourceView === "Page" ? "Crop" : "Page")
-                    }
-                  >
-                    {sourceView === "Page" ? "Show crop" : "Show page"}
-                  </button>
-                )}
-                <button
-                  aria-label="Zoom out"
-                  disabled={zoom <= 0.5}
-                  onClick={() => setZoom((value) => Math.max(0.5, value - 0.25))}
-                >
-                  −
-                </button>
-                <button aria-label="Reset zoom" onClick={() => setZoom(1)}>
-                  {Math.round(zoom * 100)}%
-                </button>
-                <button
-                  aria-label="Zoom in"
-                  disabled={zoom >= 2.5}
-                  onClick={() => setZoom((value) => Math.min(2.5, value + 0.25))}
-                >
-                  +
-                </button>
+              <input
+                aria-label={t("filterDocument")}
+                placeholder={t("findContent")}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+              <DocumentTree
+                nodes={bundle.manual.content}
+                selected={selected}
+                query={query}
+                collapsed={collapsed}
+                onSelect={(selectedNode) => select(selectedNode.id)}
+                onToggle={(id) =>
+                  setCollapsed((current) => {
+                    const next = new Set(current);
+                    if (next.has(id)) next.delete(id);
+                    else next.add(id);
+                    return next;
+                  })
+                }
+              />
+            </aside>
+            {outlineOpen && <div className="sheet-backdrop" onClick={() => setOutlineOpen(false)} aria-hidden="true" />}
+
+            <section className="source-panel" aria-label={t("originalDocument")}>
+              <div className="source-toolbar">
+                <div>
+                  <button aria-label={t("prevPage")} onClick={() => movePage(-1)} disabled={page === processed[0]}>←</button>
+                  <span>{t("pageN", { n: page })}</span>
+                  <button aria-label={t("nextPage")} onClick={() => movePage(1)} disabled={page === processed.at(-1)}>→</button>
+                </div>
+                <div>
+                  {records.length > 0 && (
+                    <span className="kbd-hint" title={t("keyboardHint")}>
+                      <kbd>j</kbd><kbd>k</kbd> {recordIndex + 1}/{records.length}
+                    </span>
+                  )}
+                  {cropPath && (
+                    <button onClick={() => setSourceView(sourceView === "Page" ? "Crop" : "Page")}>
+                      {t(sourceView === "Page" ? "showCrop" : "showPage")}
+                    </button>
+                  )}
+                  <span className="zoom">
+                    <button aria-label={t("zoomOut")} disabled={zoom <= 0.5} onClick={() => setZoom((value) => Math.max(0.5, value - 0.25))}>−</button>
+                    <button aria-label={t("resetZoom")} onClick={() => setZoom(1)}>{Math.round(zoom * 100)}%</button>
+                    <button aria-label={t("zoomIn")} disabled={zoom >= 2.5} onClick={() => setZoom((value) => Math.min(2.5, value + 0.25))}>+</button>
+                  </span>
+                </div>
               </div>
-            </div>
-            <div ref={canvasRef} className="canvas" tabIndex={0} aria-label="Document preview">
-              <div className="zoom-surface" style={{ width: `${zoom * 100}%` }}>
-                <Preview
-                  url={imageUrl}
-                  alt={
-                    showingCrop
-                      ? "Original selected crop"
-                      : `Original page ${page}`
-                  }
-                >
-                  {!showingCrop &&
-                    nodes
-                      .filter(
-                        ({ node }) =>
-                          node.type !== "chapter" && node.page === page,
-                      )
-                      .map(({ node }) => {
-                        const el = node as ManualElement;
-                        const box = bboxToPercentage(el.source);
-                        return box ? (
-                          <button
-                            key={el.id}
-                            data-type={el.type}
-                            className={`bbox ${selected === el.id ? "active" : ""}`}
-                            aria-label={`Select ${el.type} ${el.id}`}
-                            style={{
-                              left: `${box.left}%`,
-                              top: `${box.top}%`,
-                              width: `${box.width}%`,
-                              height: `${box.height}%`,
-                            }}
-                            onClick={() => setSelected(el.id)}
-                          >
-                            <span className="bbox-label" aria-hidden="true">
-                              {label(el.type)}
-                            </span>
-                          </button>
-                        ) : null;
-                      })}
-                </Preview>
+              <div ref={canvasRef} className="canvas" tabIndex={0} aria-label={t("documentPreview")}>
+                <div className="zoom-surface" style={{ width: `${zoom * 100}%` }}>
+                  <Preview url={imageUrl} alt={showingCrop ? t("originalCrop") : t("originalPage", { n: page })}>
+                    {!showingCrop &&
+                      records
+                        .filter(({ node }) => node.page === page)
+                        .map(({ node }) => {
+                          const el = node as ManualElement;
+                          const box = bboxToPercentage(el.source);
+                          return box ? (
+                            <button
+                              key={el.id}
+                              data-type={el.type}
+                              className={`bbox ${selected === el.id ? "active" : ""}`}
+                              aria-label={t("selectBox", { type: typeLabel(el.type), id: el.id })}
+                              style={{ left: `${box.left}%`, top: `${box.top}%`, width: `${box.width}%`, height: `${box.height}%` }}
+                              onClick={() => setSelected(el.id)}
+                            >
+                              <span className="bbox-label" aria-hidden="true">{typeLabel(el.type)}</span>
+                            </button>
+                          ) : null;
+                        })}
+                  </Preview>
+                </div>
               </div>
-            </div>
-            <div className="source-foot">
-              {!showingCrop && geometry && imageUrl
-                ? "Select an outlined region to inspect its content."
-                : "Original visual evidence from the bundle."}
-              {imageUrl && (
-                <a href={imageUrl} target="_blank" rel="noreferrer">
-                  Open original ↗
-                </a>
+              <div className="source-foot">
+                <span>{t(!showingCrop && geometry && imageUrl ? "selectRegion" : "originalEvidence")}</span>
+                {imageUrl && <a href={imageUrl} target="_blank" rel="noreferrer">{t("openOriginal")} ↗</a>}
+              </div>
+            </section>
+
+            <aside className="inspector" tabIndex={0} aria-label={t("inspector")}>
+              {element ? (
+                <Record key={element.id} element={element} />
+              ) : node ? (
+                <div className="record">
+                  <h2 className="chapter-title">{node.type === "chapter" ? node.title : t("documentWord")}</h2>
+                  <p className="empty-note">{t("selectRecord")}</p>
+                  <Raw value={node} />
+                </div>
+              ) : (
+                <p className="empty-note">{t("noRecords")}</p>
               )}
-            </div>
-          </section>
-          <aside className="inspector" tabIndex={0} aria-label="Element inspector">
-            <div className="panel-title">Inspector <span>Source → text</span></div>
-            {element ? (
-              <Record element={element} />
-            ) : node ? (
-              <>
-                <h2>{node.type === "chapter" ? node.title : "Document"}</h2>
-                <p>
-                  Select an element to compare source content and enrichment.
-                </p>
-                <Raw value={node} />
-              </>
-            ) : (
-              <p>No records in this bundle.</p>
-            )}
-          </aside>
-        </div>
-      )}
-      {view === "Validation" && <Validation bundle={bundle} />}
+            </aside>
+          </div>
+        )}
+
+        {view === "Validation" && <Validation bundle={bundle} onInspect={() => setView("Inspect")} />}
+      </div>
     </div>
   );
 }
+
+type Theme = "system" | "light" | "dark";
+const THEMES: { id: Theme; glyph: string; label: Key }[] = [
+  { id: "system", glyph: "◐", label: "theme.system" },
+  { id: "light", glyph: "○", label: "theme.light" },
+  { id: "dark", glyph: "●", label: "theme.dark" },
+];
+const THEME_STORAGE = "manual-ingestion-theme";
+
+function savedTheme(): Theme {
+  try {
+    const value = window.localStorage.getItem(THEME_STORAGE);
+    if (value === "light" || value === "dark") return value;
+  } catch {
+    // Storage can be unavailable; follow the system.
+  }
+  return "system";
+}
+
+/** System by default; an explicit choice is stamped on <html> and remembered. */
+function useTheme(): [Theme, (theme: Theme) => void] {
+  const [theme, setTheme] = useState<Theme>(savedTheme);
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === "system") delete root.dataset.theme;
+    else root.dataset.theme = theme;
+    // The browser bar follows an explicit choice; "system" keeps the media-based defaults.
+    for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
+      meta.dataset.default ??= meta.content;
+      meta.content = theme === "system" ? meta.dataset.default : theme === "dark" ? "#0f1019" : "#fcfcfd";
+    }
+    try {
+      if (theme === "system") window.localStorage.removeItem(THEME_STORAGE);
+      else window.localStorage.setItem(THEME_STORAGE, theme);
+    } catch {
+      // Not persisting is acceptable.
+    }
+  }, [theme]);
+  return [theme, setTheme];
+}
+
+const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+
+function Loading() {
+  const t = useT();
+  const [frame, setFrame] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => setFrame((value) => (value + 1) % SPINNER.length), 80);
+    return () => window.clearInterval(timer);
+  }, []);
+  return (
+    <p className="loading" role="status">
+      <span aria-hidden="true">{SPINNER[frame]}</span> {t("reading")}…
+    </p>
+  );
+}
+
 export function App() {
+  const [lang, setLangState] = useState<Lang>(detectLang);
+  const [theme, setTheme] = useTheme();
+  const t = translator(lang);
   const [bundle, setBundle] = useState<LoadedRunBundle | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -587,6 +656,13 @@ export function App() {
   const active = useRef<BundleSource | null>(null);
   const sequence = useRef(0);
   const folder = useRef<HTMLInputElement>(null);
+  function setLang(next: Lang) {
+    setLangState(next);
+    rememberLang(next);
+  }
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
   async function load(source: BundleSource) {
     const id = ++sequence.current;
     setBusy(true);
@@ -603,8 +679,7 @@ export function App() {
       setOpen(false);
     } catch (e) {
       source.dispose();
-      if (id === sequence.current)
-        setError(e instanceof Error ? e.message : String(e));
+      if (id === sequence.current) setError(e instanceof Error ? e.message : String(e));
     } finally {
       if (id === sequence.current) setBusy(false);
     }
@@ -617,120 +692,98 @@ export function App() {
     }
   }
   useEffect(() => {
-    remote(
-      new URLSearchParams(window.location.search).get("run") ||
-        "./examples/synthetic-bundle/",
-    );
+    remote(new URLSearchParams(window.location.search).get("run") || "./examples/synthetic-bundle/");
     return () => {
       sequence.current++;
       active.current?.dispose();
     };
   }, []);
   return (
-    <div className="app">
-      <a className="skip" href="#main">
-        Skip to content
-      </a>
-      <header className="app-header">
-        <a
-          className="brand"
-          href="https://github.com/CometaSensitiva/industrial-manual-ingestion"
-        >
-          <span className="brand-mark" aria-hidden="true">
-            <span className="brand-ascii">
-              {portraitRows.map((row, y) => (
-                <span key={y}>
-                  {row.map((run, x) => <span key={x} className={`tone-${run.tone === "." ? "line" : run.tone}`}>{run.text}</span>)}
-                  {y < portraitRows.length - 1 && "\n"}
-                </span>
+    <LangContext.Provider value={lang}>
+      <div className="app">
+        <a className="skip" href="#main">{t("skip")}</a>
+        <header className="topbar">
+          <a className="brand" href="https://github.com/CometaSensitiva/industrial-manual-ingestion">
+            <BrandMark />
+            <span className="wordmark">manual-ingestion <span>viewer</span></span>
+          </a>
+          <div className="topbar-actions">
+            <div className="switch theme-switch" role="group" aria-label={t("theme")}>
+              {THEMES.map((option) => (
+                <button key={option.id} aria-pressed={theme === option.id} onClick={() => setTheme(option.id)} aria-label={t(option.label)} title={t(option.label)}>
+                  <span aria-hidden="true">{option.glyph}</span>
+                </button>
               ))}
-            </span>
-          </span>
-          <span>
-            Industrial Manual Ingestion<small>BUNDLE VIEWER</small>
-          </span>
-        </a>
-        <div className="header-actions">
-          <span className="local-note">Local files stay in your browser</span>
-          <button onClick={() => setOpen(!open)} aria-expanded={open}>
-            Open bundle
-          </button>
-        </div>
-      </header>
-      {open && (
-        <div className="open-panel">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              remote(input);
-            }}
-          >
-            <label htmlFor="url">Bundle URL</label>
-            <div>
-              <input
-                id="url"
-                placeholder="https://example.org/bundle/"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-              />
-              <button disabled={busy}>Open URL</button>
             </div>
-          </form>
-          <button onClick={() => folder.current?.click()}>
-            Choose local folder
-          </button>
-          <button onClick={() => remote("./examples/synthetic-bundle/")}>
-            Open example
-          </button>
-          <input
-            hidden
-            ref={folder}
-            type="file"
-            multiple
-            {...{ webkitdirectory: "" }}
-            onChange={(e) => {
-              if (e.target.files?.length) {
-                try {
-                  void load(new LocalBundleSource(Array.from(e.target.files)));
-                } catch (err) {
-                  setError(String(err));
+            <div className="switch lang-switch" role="group" aria-label={t("language")}>
+              {LANGS.map((code) => (
+                <button key={code} aria-pressed={lang === code} onClick={() => setLang(code)} lang={code}>
+                  {code}
+                </button>
+              ))}
+            </div>
+            <button className="ghost" onClick={() => setOpen(!open)} aria-expanded={open}>
+              {t("openBundle")}
+            </button>
+          </div>
+        </header>
+        {open && (
+          <div className="open-panel">
+            <div className="open-intro">
+              <span className="label">{t("openTitle")}</span>
+              <p>{t("openIntro")}</p>
+            </div>
+            <div className="open-actions">
+              <button className="primary" onClick={() => folder.current?.click()}>{t("chooseFolder")}</button>
+              <button onClick={() => remote("./examples/synthetic-bundle/")}>{t("openExample")}</button>
+            </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                remote(input);
+              }}
+            >
+              <label htmlFor="url">{t("urlLabel")} <small>{t("urlHint")}</small></label>
+              <div>
+                <input id="url" placeholder="https://example.org/bundle/" value={input} onChange={(e) => setInput(e.target.value)} />
+                <button disabled={busy}>{t("openUrl")}</button>
+              </div>
+            </form>
+            <input
+              hidden
+              ref={folder}
+              type="file"
+              multiple
+              {...{ webkitdirectory: "" }}
+              onChange={(e) => {
+                if (e.target.files?.length) {
+                  try {
+                    void load(new LocalBundleSource(Array.from(e.target.files)));
+                  } catch (err) {
+                    setError(String(err));
+                  }
                 }
-              }
-              e.target.value = "";
-            }}
-          />
-          <small>
-            Choose the folder containing run.json. Remote servers must allow
-            cross-origin reads.
-          </small>
-        </div>
-      )}
-      {error && (
-        <div className="error" role="alert">
-          <strong>Could not open bundle</strong>
-          <p>{error}</p>
-          <button onClick={() => setOpen(true)}>Choose another bundle</button>
-        </div>
-      )}
-      <main id="main" tabIndex={-1}>
-        {busy && (
-          <p className="loading" role="status">
-            Reading bundle…
-          </p>
+                e.target.value = "";
+              }}
+            />
+          </div>
         )}
-        {bundle && (
-          <Workbench
-            key={bundle.manifest.run_id + bundle.source?.label}
-            bundle={bundle}
-          />
+        {error && (
+          <div className="error" role="alert">
+            <strong>[!!] {t("loadError")}</strong>
+            <p>{error}</p>
+            <button onClick={() => setOpen(true)}>{t("chooseAnother")}</button>
+          </div>
         )}
-      </main>
-      <footer>
-        <span className="pipeline">PDF <i>→</i> Structure <i>→</i> Bundle</span>
-        <a href="https://github.com/CometaSensitiva/industrial-manual-ingestion">
-          Source & CLI ↗
-        </a>
-      </footer>
-    </div>
+        <main id="main" tabIndex={-1}>
+          {busy && <Loading />}
+          {bundle && <Workbench key={bundle.manifest.run_id + bundle.source?.label} bundle={bundle} />}
+        </main>
+        <footer>
+          <span className="pipeline">{t("pipeline")}</span>
+          <a href="https://github.com/CometaSensitiva/industrial-manual-ingestion">{t("sourceCli")} ↗</a>
+        </footer>
+      </div>
+    </LangContext.Provider>
   );
 }

@@ -1,10 +1,15 @@
 # Industrial Manual Ingestion
 
+**English** · [Italiano](README.it.md)
+
 Turn technical PDFs into structured, traceable content with local image descriptions.
 
 **[Open the viewer](https://CometaSensitiva.github.io/industrial-manual-ingestion/)** · [Bundle format](docs/bundle-format.md)
 
-![Bundle viewer](docs/viewer.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/viewer-dark.png">
+  <img alt="The bundle viewer: document outline, source page with bounding boxes and the extracted content of the selected record" src="docs/viewer.png">
+</picture>
 
 One Python CLI processes the document. A read-only browser viewer connects each extracted record to its original page and image. Tables use structured serialization; images receive descriptions from a local Qwen model. No chat service or retrieval system is included.
 
@@ -92,11 +97,15 @@ Scanned PDFs use an isolated PaddleOCR-VL runtime, configured with `--paddle-pyt
 
 The public viewer opens a synthetic example automatically. Use **Open bundle** to choose a local folder or enter an HTTP(S) URL. Local folders are read in the browser and are not uploaded. A remote server must allow cross-origin reads.
 
-- **Overview:** a visual journey through the source PDF, extracted structure and image descriptions, with real bundle previews, route explanations and warnings. A terminal card shows the exact `manual-ingestion ingest` command that reproduces the run. Runs without enrichment are shown explicitly.
-- **Inspect:** collapsible document hierarchy, source page, labeled bounding boxes and extracted content. Images, tables, text and titles use the restrained accent palette inherited from the original research viewer.
-- **Validation:** reported check status, expandable diagnostics and warnings, and direct links to each bundle file. Software checks and semantic review remain separate.
+- **Overview:** the run in three steps (source PDF, structure, image descriptions) with real previews, and a terminal that types the exact `manual-ingestion ingest` command reproducing the run, followed by its result tree. Runs without enrichment are shown explicitly.
+- **Inspect:** document outline, source page with bounding boxes (labels appear on hover and for the selected record), and the extracted content of the selected record. On phones the outline opens as a sheet from a compact record bar with previous/next controls, so the page stays in view.
+- **Checks:** the verdict with one cell per check, checks grouped into four areas (bundle files, document structure, images and tables, status) with failures first, the `manual-ingestion validate` output and run setup (parser, model, prompt, Ollama version), what was measured, the route signals and the bundle files. A separate panel states what software checks cannot tell you.
 
-The **Source evidence** panel shows fields attached to the selected element, not a reconstruction of an external retrieval system. Add `--page-previews` during ingestion to inspect complete source pages and bounding boxes. Without it, available crops and extracted content remain inspectable.
+The interface is available in **English and Italian**: use the `EN / IT` switch, or add `?lang=it` to the URL; otherwise the browser language decides and the choice is remembered. Bundle content (document text, Qwen descriptions, check messages) is shown as recorded, and the run log keeps the CLI's English output.
+
+Views are linkable: append `#overview`, `#inspect` or `#checks` to the viewer URL. In Inspect, `j` and `k` move to the next and previous record. Light and dark themes: the `◐ ○ ●` switch chooses system, light or dark, and the choice is remembered.
+
+The **Source** section of the inspector shows fields attached to the selected element, not a reconstruction of an external retrieval system. Add `--page-previews` during ingestion to inspect complete source pages and bounding boxes. Without it, available crops and extracted content remain inspectable.
 
 Run locally with Node 22 or later:
 
@@ -141,6 +150,12 @@ cd viewer
 npm ci
 npm test
 npm run build
+```
+
+Viewer interface copy lives in `viewer/src/i18n.ts` (English and Italian; add every new string to both). The favicon, touch icon and share image in `viewer/public/` are generated from the CLI portrait, so the identity stays one source; regenerate them after changing the portrait:
+
+```sh
+python viewer/scripts/brand_assets.py
 ```
 
 CI runs the Python suite, builds a wheel, and tests/builds the viewer. GitHub Pages serves only the viewer and synthetic example. Runtime documents, caches and model files are not committed.

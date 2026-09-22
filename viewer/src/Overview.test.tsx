@@ -81,12 +81,35 @@ describe("Validation report states", () => {
 
 describe("Reproduce-this-run command", () => {
   it("rebuilds the ingest command from the manifest", async () => {
-    const { reproduceCommand, pageRanges } = await import("./CommandCard");
+    const { reproduceCommand, pageRanges } = await import("./RunLog");
     const bundle = fixture();
     expect(reproduceCommand(bundle, true)).toBe("manual-ingestion ingest synthetic-manual.pdf --out synthetic-example --page-previews");
     bundle.manifest.pipeline.config.enrichment = { enabled: false };
     bundle.manifest.pipeline.config.pages = { selection: "explicit", processed: [1, 2, 3, 5] };
     expect(reproduceCommand(bundle, false)).toBe("manual-ingestion ingest synthetic-manual.pdf --out synthetic-example --pages 1-3,5 --no-enrich");
     expect(pageRanges([2])).toBe("2");
+  });
+});
+
+describe("Italian interface", () => {
+  it("renders the overview and checks in Italian, leaving bundle data untouched", async () => {
+    const { LangContext } = await import("./i18n");
+    const bundle = fixture();
+    const overview = renderToStaticMarkup(<LangContext.Provider value="it"><Overview bundle={bundle} onInspect={() => {}} onValidate={() => {}} /></LangContext.Provider>);
+    expect(overview).toContain("Il PDF aveva già un indice utilizzabile.");
+    expect(overview).toContain("1/1 immagini descritte");
+    expect(overview).toContain("manual-ingestion ingest synthetic-manual.pdf");
+    const checks = renderToStaticMarkup(<LangContext.Provider value="it"><Validation bundle={bundle} /></LangContext.Provider>);
+    expect(checks).toContain("Verifiche software superate");
+    expect(checks).not.toContain("Software checks passed");
+  });
+  it("keeps every placeholder of the English copy in the Italian copy", async () => {
+    const { translator } = await import("./i18n");
+    const en = translator("en"), it = translator("it");
+    const vars = { n: 1, p: 1, t: 1, d: 1, c: "x", name: "x", type: "x", id: "x" };
+    for (const key of ["pages", "checksMeta", "sourceFact", "describedFact", "checksSummary", "selectBox", "expand", "commandLabel"] as const) {
+      expect(it(key, vars)).not.toMatch(/\{\w+\}/);
+      expect(en(key, vars)).not.toMatch(/\{\w+\}/);
+    }
   });
 });

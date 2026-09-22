@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { LoadedRunBundle } from "./contracts";
+import { useT } from "./i18n";
 
 /** Collapse sorted pages into the CLI's `1-3,5` syntax. */
 export function pageRanges(pages: number[]): string {
@@ -48,15 +49,18 @@ function useTyped(text: string) {
       timer = window.setTimeout(() => type(at + 1), delay);
     };
     const observer = new IntersectionObserver(([entry]) => {
-      if (entry?.isIntersecting) { observer.disconnect(); timer = window.setTimeout(() => type(1), 350); }
-    }, { threshold: 0.6 });
+      if (entry?.isIntersecting) { observer.disconnect(); timer = window.setTimeout(() => type(1), 200); }
+    }, { threshold: 0.35 });
     observer.observe(node);
     return () => { observer.disconnect(); window.clearTimeout(timer); };
   }, [text]);
   return { ref, typed: text.slice(0, count), done: count >= text.length };
 }
 
-export function CommandCard({ bundle, pageUrl }: { bundle: LoadedRunBundle; pageUrl: string | null }) {
+export type RunStep = { name: string; value: string; tone?: "ok" | "warn" };
+
+/** The run as a CLI session: the command is typed, then its result tree prints. */
+export function RunLog({ bundle, pageUrl, steps }: { bundle: LoadedRunBundle; pageUrl: string | null; steps: RunStep[] }) {
   const [previews, setPreviews] = useState(false);
   useEffect(() => {
     if (!pageUrl) return;
@@ -64,28 +68,31 @@ export function CommandCard({ bundle, pageUrl }: { bundle: LoadedRunBundle; page
     probe.onload = () => setPreviews(true);
     probe.src = pageUrl;
   }, [pageUrl]);
+  const t = useT();
   const command = reproduceCommand(bundle, previews);
   const { ref, typed, done } = useTyped(command);
-  const status = bundle.manifest.status;
 
   return (
-    <section className="cli-story" aria-labelledby="cli-title">
-      <div className="route-copy">
-        <span className="eyebrow">MADE WITH THE CLI</span>
-        <h3 id="cli-title">One command made this bundle.</h3>
-        <p>Run it on your machine to reproduce this run, or swap in your own PDF. Everything stays local.</p>
-      </div>
-      <div className="terminal-card">
-        <pre ref={ref} aria-label={`Command: ${command}`}>
-          <span className="prompt" aria-hidden="true">$ </span>
-          <span className="typed">
-            {/* Each argument stays whole; lines only break between arguments. */}
-            {typed.split(/( )/).map((part, i) => (part === " " ? " " : <span key={i} className="arg">{part}</span>))}
+    <div className="terminal">
+      <div className="terminal-bar" aria-hidden="true"><i /><i /><i /><span>manual-ingestion</span></div>
+      <pre ref={ref} aria-label={t("commandLabel", { c: command })}>
+        <span className="prompt" aria-hidden="true">$ </span>
+        <span className="typed">
+          {/* Each argument stays whole; lines only break between arguments. */}
+          {typed.split(/( )/).map((part, i) => (part === " " ? " " : <span key={i} className="arg">{part}</span>))}
+        </span>
+        {!done && <span className="caret" aria-hidden="true" />}
+        {done && (
+          <span className="run-steps">
+            {steps.map((step, index) => (
+              <span key={step.name} className="run-step" style={{ animationDelay: `${index * 120}ms` }}>
+                {"\n"}<i>{index === steps.length - 1 ? "└─" : "├─"}</i> {step.name.padEnd(10)}
+                <b className={step.tone}>{step.value}</b>
+              </span>
+            ))}
           </span>
-          {!done && <span className="caret" aria-hidden="true" />}
-          {done && <span className="terminal-result" aria-hidden="true">{"\n"}<i>└─</i> bundle <b>{status === "validated" ? "[ok]" : "[!]"}</b> {status}</span>}
-        </pre>
-      </div>
-    </section>
+        )}
+      </pre>
+    </div>
   );
 }
