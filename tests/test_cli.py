@@ -530,7 +530,8 @@ def test_root_help_uses_complete_copyable_examples(capsys):
     assert "manual-ingestion detect examples/synthetic-manual.pdf" in flattened
     assert "--out my-first-bundle --no-enrich --page-previews" in flattened
     assert "manual-ingestion validate my-first-bundle" in flattened
-    assert "manual-ingestion ingest --help" in output
+    assert "manual-ingestion start" in output
+    assert "manual-ingestion help ingest" in output
     assert "<command>" not in output
     assert "manual-ingestion detect manual.pdf" not in output
 
@@ -559,9 +560,10 @@ def test_missing_output_shows_a_copyable_ingest_command(capsys):
     assert "manual-ingestion ingest PDF --out NEW_BUNDLE" in output
 
 
-def test_validation_default_shows_failed_checks(monkeypatch, capsys):
+def test_validation_default_shows_failed_checks(monkeypatch, capsys, tmp_path):
+    (tmp_path / "run.json").write_text("{}")
     monkeypatch.setattr(cli, "validate_run_bundle", lambda _: _validation(passed=False))
-    assert cli.main(["validate", "bundle"]) == 1
+    assert cli.main(["validate", str(tmp_path)]) == 1
     output = capsys.readouterr().out
     assert "manual.json is missing" in output
     assert "Software checks do not certify" in output
@@ -594,3 +596,93 @@ def test_library_stdout_cannot_corrupt_json(monkeypatch, capsys, tmp_path):
     output = capsys.readouterr()
     assert json.loads(output.out)["status"] == "validated"
     assert "library diagnostic" in output.err
+
+
+def test_cli_and_viewer_share_one_portrait():
+    from manual_ingestion import cli_display
+
+    brand = (Path(__file__).parents[1] / "viewer/src/brand.ts").read_text()
+    assert f"BRAND_ASCII = {json.dumps(cli_display.LOGO)};" in brand
+    assert f"BRAND_TONES = {json.dumps(cli_display.LOGO_TONES)};" in brand
+    rows = cli_display.LOGO.split("\n")
+    tones = cli_display.LOGO_TONES.split("\n")
+    assert [len(row) for row in rows] == [len(row) for row in tones]
+
+
+def test_typewriter_reveals_the_exact_help_without_markers(monkeypatch):
+    import io
+
+    from manual_ingestion import cli_effects
+
+    monkeypatch.setattr(cli_effects.time, "sleep", lambda _: None)
+    marker = cli_effects.SLOW
+    rendered = f"\x1b[1m{marker}INDUSTRIAL{marker}\x1b[0m manual\n  ├─ ok\n"
+    stream = io.StringIO()
+    cli_effects.typewrite(rendered, stream, seed=1)
+    assert stream.getvalue() == rendered.replace(marker, "") + "\x1b[0m"
+
+
+def test_help_is_never_animated_outside_an_interactive_terminal(monkeypatch):
+    import io
+
+    from manual_ingestion import cli_effects
+
+    class Tty(io.StringIO):
+        def isatty(self):
+            return True
+
+    monkeypatch.delenv("CI", raising=False)
+    monkeypatch.delenv(cli_effects.ANIMATION_OFF, raising=False)
+    monkeypatch.setenv("TERM", "xterm-256color")
+    assert cli_effects.animate(Tty())
+    assert not cli_effects.animate(io.StringIO())
+    monkeypatch.setenv(cli_effects.ANIMATION_OFF, "1")
+    assert not cli_effects.animate(Tty())
+
+
+def test_static_help_never_contains_typing_markers(capsys):
+    from manual_ingestion import cli_effects
+
+    cli.build_parser().print_help()
+    assert cli_effects.SLOW not in capsys.readouterr().out
+
+
+def test_missing_bundle_folder_is_explained_not_checked(capsys, tmp_path):
+    assert cli.main(["validate", str(tmp_path / "nope")]) == 1
+    captured = capsys.readouterr()
+    assert "Bundle folder not found" in captured.err
+    assert "run.json" not in captured.out
+
+
+def test_bare_invocation_opens_the_home_screen(capsys):
+    assert cli.main([]) == 0
+    output = capsys.readouterr().out
+    assert "INDUSTRIAL MANUAL INGESTION" in output
+    for command in ("detect", "ingest", "validate", "schema", "help"):
+        assert command in output
+
+
+def test_help_command_routes_to_guided_help(capsys):
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main(["help", "validate"])
+    assert exit_info.value.code == 0
+    assert "Check an existing bundle" in capsys.readouterr().out
+
+
+def test_mistyped_command_suggests_the_closest_one(capsys):
+    with pytest.raises(SystemExit):
+        cli.main(["ingets", "manual.pdf"])
+    error = capsys.readouterr().err
+    assert "'ingets' is not a manual-ingestion command." in error
+    assert "Try  manual-ingestion ingest" in error
+
+
+@pytest.mark.parametrize(
+    ("message", "hint"),
+    [
+        ("caption provider preflight failed: Cannot reach local Ollama at http://127.0.0.1:11434: refused", "ollama serve"),
+        ("caption provider preflight failed: The exact configured Ollama model tag 'qwen3.5:4b' is not installed", "ollama pull qwen3.5:4b"),
+    ],
+)
+def test_ollama_failures_get_a_specific_hint(message, hint):
+    assert hint in cli._hint(message, argparse.Namespace())

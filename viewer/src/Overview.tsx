@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { LoadedRunBundle, ManualElement, ManualNode } from "./contracts";
+import { CommandCard } from "./CommandCard";
 
 function collect(nodes: ManualNode[]): ManualNode[] {
   return nodes.flatMap(node => node.type === "chapter" ? [node, ...collect(node.content)] : [node]);
@@ -42,7 +43,7 @@ export function Overview({ bundle, onInspect, onValidate }: {
     <div className="overview overview-story">
       <header className="story-heading">
         <div>
-          <span className="eyebrow">THE DOCUMENT JOURNEY</span>
+          <span className="eyebrow">DOCUMENT JOURNEY</span>
           <h2>From pages to usable content.</h2>
           <p>Follow this run from its source PDF to the content included in the bundle.</p>
         </div>
@@ -51,7 +52,7 @@ export function Overview({ bundle, onInspect, onValidate }: {
 
       <ol className="story-stages" aria-label="Document processing journey">
         <li className="story-stage source-stage">
-          <div className="stage-heading"><span className="stage-number">01</span><span>THE SOURCE</span></div>
+          <div className="stage-heading"><span className="stage-number">01</span><span>/ SOURCE</span></div>
           <div className="stage-media page-evidence">
             <EvidenceImage url={pageUrl} alt={`Original PDF page ${firstPage}`} fallback="Page preview not included in this bundle." />
             <span className="evidence-tag">Original · page {firstPage}</span>
@@ -61,9 +62,9 @@ export function Overview({ bundle, onInspect, onValidate }: {
           <div className="stage-fact"><strong>{manual.metadata.pages_processed.length}</strong> of {manual.metadata.pages_total} pages processed</div>
         </li>
         <li className="story-stage structure-stage">
-          <div className="stage-heading"><span className="stage-number">02</span><span>THE STRUCTURE</span></div>
+          <div className="stage-heading"><span className="stage-number">02</span><span>/ STRUCTURE</span></div>
           <div className="stage-media structure-evidence">
-            <span className="evidence-caption">INSIDE THIS DOCUMENT</span>
+            <span className="evidence-caption">root / document</span>
             <ul>
               {(chapters.length ? chapters : nodes).slice(0, 3).map(node => (
                 <li key={node.id}><span>{node.type === "chapter" ? node.title : node.text || node.caption_original || node.type}</span><small>p. {node.page}</small></li>
@@ -76,7 +77,7 @@ export function Overview({ bundle, onInspect, onValidate }: {
           <div className="stage-fact"><strong>{chapters.length}</strong> {chapters.length === 1 ? "chapter" : "chapters"} · <strong>{nodes.length - chapters.length}</strong> content records</div>
         </li>
         <li className={`story-stage visual-stage ${described.length ? "has-descriptions" : "without-descriptions"}`}>
-          <div className="stage-heading"><span className="stage-number">03</span><span>THE VISUAL CONTENT</span></div>
+          <div className="stage-heading"><span className="stage-number">03</span><span>/ VISUALS</span></div>
           <div className="stage-media visual-evidence">
             <EvidenceImage url={imageUrl} alt={firstImage ? `Extracted image from page ${firstImage.page}` : "Extracted image"} fallback={images.length ? "Image preview unavailable." : "This bundle contains no image records."} />
             <span className="evidence-tag">{firstImage ? `Image · page ${firstImage.page}` : "No images"}</span>
@@ -90,12 +91,19 @@ export function Overview({ bundle, onInspect, onValidate }: {
       </ol>
 
       <section className="route-story" aria-labelledby="route-title">
-        <div><span className="eyebrow">WHY THIS ROUTE?</span><h3 id="route-title">{route.title}</h3><p>{route.text}</p></div>
-        <div className="route-facts"><div><span>Reading</span><strong>{manifest.pipeline.parser}</strong></div><div><span>Organization</span><strong>{manifest.pipeline.structure_strategy.replaceAll("_", " ")}</strong></div></div>
+        <div className="route-copy"><span className="eyebrow">ROUTE / {manifest.pipeline.profile.replaceAll("_", " ").toUpperCase()}</span><h3 id="route-title">{route.title}</h3><p>{route.text}</p></div>
+        <dl className="route-tree" aria-label="Pipeline route">
+          <div><dt>PDF</dt></div>
+          <div><dt><i>├─</i> read</dt><dd>{manifest.pipeline.parser}</dd></div>
+          <div><dt><i>├─</i> organize</dt><dd>{manifest.pipeline.structure_strategy.replaceAll("_", " ")}</dd></div>
+          <div><dt><i>└─</i> bundle</dt><dd>{manifest.status}</dd></div>
+        </dl>
       </section>
 
+      <CommandCard bundle={bundle} pageUrl={pageUrl} />
+
       <section className="bundle-story" aria-labelledby="bundle-title">
-        <div><span className="eyebrow">THE RESULT</span><h3 id="bundle-title">One bundle. Traceable content.</h3><p>Content, source references and the run report, kept together.</p></div>
+        <div><span className="eyebrow">RESULT</span><h3 id="bundle-title">One bundle. Traceable content.</h3><p>Content, source references and the run report, kept together.</p></div>
         <div className="bundle-files" aria-label="Bundle contents"><code>manual.json</code><code>toc.json</code><code>run.json</code><span>assets/</span></div>
         <button className="story-text-link" onClick={onValidate}>{checksText} <span aria-hidden="true">↗</span></button>
       </section>

@@ -14,3 +14,7 @@ node_modules/
 .cache/
 runs/
 *.log
+# Bundles created by the quick tour or the guided run in the project folder.
+/my-first-bundle/
+/*-bundle/
+/*-bundle-*/

@@ -9,6 +9,7 @@ from typing import TextIO
 from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 
+from .cli_display import ACCENT, BLUE, POSITIVE
 from .progress import ProgressEvent, ProgressStage, ProgressState
 
 
@@ -54,9 +55,9 @@ class RichProgressRenderer:
 
         console = Console(file=self._stream, force_terminal=self.enabled)
         self._progress = Progress(
-            SpinnerColumn(finished_text=" ", style="#b4a0e5"),
+            SpinnerColumn("line", finished_text=" ", style=ACCENT),
             TextColumn("{task.fields[label]}", markup=False),
-            BarColumn(bar_width=20, complete_style="#b4a0e5", finished_style="green", pulse_style="#97bafa"),
+            BarColumn(bar_width=20, complete_style=ACCENT, finished_style=POSITIVE, pulse_style=BLUE),
             TextColumn("{task.fields[counter]}", markup=False),
             TimeElapsedColumn(),
             console=console,

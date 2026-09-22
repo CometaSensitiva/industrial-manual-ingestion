@@ -8,8 +8,9 @@ import {
 } from "./lib/bundleSource";
 import { bboxToPercentage } from "./lib/geometry";
 
+import { Validation } from "./Validation";
 import { Overview } from "./Overview";
-import { BRAND_ASCII } from "./brand";
+import { portraitRuns } from "./brand";
 
 type View = "Overview" | "Inspect" | "Validation";
 function flatten(
@@ -105,7 +106,7 @@ function TreeNode({
         </button>
       </div>
       {hasChildren && !isCollapsed && (
-        <ul role="group">
+        <ul>
           {children.map((child) => (
             <TreeNode
               key={child.id}
@@ -140,7 +141,7 @@ function DocumentTree({
 }) {
   const normalizedQuery = query.trim().toLowerCase();
   return (
-    <ul className="tree-items" role="tree" aria-label="Document structure">
+    <ul className="tree-items" aria-label="Document structure">
       {nodes
         .filter((node) => treeMatches(node, normalizedQuery))
         .map((node) => (
@@ -264,7 +265,7 @@ function Record({ element }: { element: ManualElement }) {
     <>
       <div className="record-heading" data-type={element.type}>
         <span className="eyebrow">
-          {element.type} · page {element.page}
+          {element.type} / page {element.page}
         </span>
         <span className="badge">
           {element.trace.include_in_rag
@@ -273,6 +274,7 @@ function Record({ element }: { element: ManualElement }) {
         </span>
       </div>
       <section className="text-block source-evidence">
+        <div className="eyebrow">SOURCE</div>
         <h3>Source evidence</h3>
         <>
           {isTable && element.table_markdown ? (
@@ -312,7 +314,7 @@ function Record({ element }: { element: ManualElement }) {
       </section>
       {element.type === "image" && (
         <section className="text-block generated">
-          <div className="eyebrow">LOCAL VISION MODEL</div>
+          <div className="eyebrow">GENERATED / LOCAL MODEL</div>
           <h3>Qwen description</h3>
           {element.caption_generated ? (
             <Description text={element.caption_generated} />
@@ -343,6 +345,8 @@ function Record({ element }: { element: ManualElement }) {
     </>
   );
 }
+const portraitRows = portraitRuns();
+
 function Workbench({ bundle }: { bundle: LoadedRunBundle }) {
   const [view, setView] = useState<View>("Inspect");
   const nodes = flatten(bundle.manual.content);
@@ -357,7 +361,7 @@ function Workbench({ bundle }: { bundle: LoadedRunBundle }) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const node = nodes.find(({ node }) => node.id === selected)?.node;
   const element = node && node.type !== "chapter" ? node : null;
-  const { manifest, manual, validation, source } = bundle;
+  const { manifest, manual, source } = bundle;
   const asset = (path: string) => source?.url(path) ?? null;
   const page = node?.page ?? manual.metadata.pages_processed[0] ?? 1;
   const pagePath = `${manifest.artifacts.assets}/pages/page_${String(page).padStart(4, "0")}.png`;
@@ -394,7 +398,7 @@ function Workbench({ bundle }: { bundle: LoadedRunBundle }) {
           <span className="badge">{label(manifest.pipeline.profile)}</span>
           <span className="badge">
             {manifest.status === "validated"
-              ? "Reported checks passed"
+              ? "[ok] reported checks passed"
               : label(manifest.status)}
           </span>
         </div>
@@ -553,7 +557,7 @@ function Workbench({ bundle }: { bundle: LoadedRunBundle }) {
             </div>
           </section>
           <aside className="inspector" tabIndex={0} aria-label="Element inspector">
-            <div className="panel-title">Extracted content</div>
+            <div className="panel-title">Inspector <span>Source → text</span></div>
             {element ? (
               <Record element={element} />
             ) : node ? (
@@ -570,63 +574,7 @@ function Workbench({ bundle }: { bundle: LoadedRunBundle }) {
           </aside>
         </div>
       )}
-      {view === "Validation" && (
-        <div className="validation">
-          <h2>Software checks</h2>
-          <p>
-            {validation?.status === "passed"
-              ? "The published report passed its software checks."
-              : "Check the report below before using this bundle."}{" "}
-            This viewer checks structure and consistency; it does not rerun the
-            Python validator.
-          </p>
-          <p className="note">
-            Included in the bundle does not mean semantically verified.
-          </p>
-          <details open={validation?.status !== "passed"}>
-            <summary>
-              {validation?.checks.length ?? 0} reported checks ·{" "}
-              {validation?.status ?? "not available"}
-            </summary>
-            {validation?.checks.map((check) => (
-              <div className="check" key={check.id}>
-                <span>{check.passed ? "✓" : "!"}</span>
-                <div>
-                  <strong>{check.id}</strong>
-                  <p>{check.message}</p>
-                </div>
-              </div>
-            ))}
-          </details>
-          <details>
-            <summary>Warnings ({manifest.warnings.length})</summary>
-            {manifest.warnings.map((w, i) => (
-              <p key={i}>{w}</p>
-            ))}
-          </details>
-          <h3>Bundle files</h3>
-          <div className="artifact-links">
-            {[
-              "run.json",
-              manifest.artifacts.manual,
-              manifest.artifacts.toc,
-              manifest.artifacts.validation,
-            ]
-              .filter((v): v is string => !!v)
-              .map((path) => {
-                const url = asset(path);
-                return url ? (
-                  <a key={path} href={url} target="_blank" rel="noreferrer">
-                    {path} ↗
-                  </a>
-                ) : (
-                  <span key={path}>{path} · missing</span>
-                );
-              })}
-          </div>
-          <Raw title="Run manifest" value={manifest} />
-        </div>
-      )}
+      {view === "Validation" && <Validation bundle={bundle} />}
     </div>
   );
 }
@@ -688,13 +636,22 @@ export function App() {
           className="brand"
           href="https://github.com/CometaSensitiva/industrial-manual-ingestion"
         >
-          <span className="brand-mark" aria-hidden="true"><span className="brand-ascii">{BRAND_ASCII}</span></span>
+          <span className="brand-mark" aria-hidden="true">
+            <span className="brand-ascii">
+              {portraitRows.map((row, y) => (
+                <span key={y}>
+                  {row.map((run, x) => <span key={x} className={`tone-${run.tone === "." ? "line" : run.tone}`}>{run.text}</span>)}
+                  {y < portraitRows.length - 1 && "\n"}
+                </span>
+              ))}
+            </span>
+          </span>
           <span>
             Industrial Manual Ingestion<small>BUNDLE VIEWER</small>
           </span>
         </a>
         <div className="header-actions">
-          <span className="local-note">Files stay in your browser</span>
+          <span className="local-note">Local files stay in your browser</span>
           <button onClick={() => setOpen(!open)} aria-expanded={open}>
             Open bundle
           </button>
@@ -769,7 +726,7 @@ export function App() {
         )}
       </main>
       <footer>
-        <span>PDF → structured content → image descriptions</span>
+        <span className="pipeline">PDF <i>→</i> Structure <i>→</i> Bundle</span>
         <a href="https://github.com/CometaSensitiva/industrial-manual-ingestion">
           Source & CLI ↗
         </a>

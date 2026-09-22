@@ -10,6 +10,7 @@ from manual_ingestion.enrichment import CaptionRequest
 from manual_ingestion.models import ElementType
 from manual_ingestion.providers.ollama import (
     ACCEPTED_OLLAMA_VERSION,
+    ollama_runtime_accepted,
     OllamaCaptionProvider,
     OllamaConfig,
     OllamaProviderError,
@@ -256,12 +257,33 @@ def test_ollama_config_rejects_alternative_model() -> None:
         OllamaConfig(model="other:latest")
 
 
-def test_ollama_preflight_rejects_unaccepted_runtime_version() -> None:
+@pytest.mark.parametrize("version", ["0.34.2", "0.35.0"])
+def test_ollama_preflight_records_any_runtime_instead_of_blocking(version: str) -> None:
     def fake_urlopen(request, timeout):
-        return FakeResponse({"version": "0.31.3"})
+        if request.full_url.endswith("/api/version"):
+            return FakeResponse({"version": version})
+        return FakeResponse(
+            {"models": [{"name": "qwen3.5:4b", "digest": TEST_MODEL_DIGEST}]}
+        )
 
-    with pytest.raises(OllamaProviderError, match="runtime does not match"):
-        OllamaCaptionProvider(http_open=fake_urlopen).preflight()
+    preflight = OllamaCaptionProvider(http_open=fake_urlopen).preflight()
+    assert preflight["version"] == version
+
+
+@pytest.mark.parametrize(
+    ("version", "accepted"),
+    [
+        ("0.34.0", True),
+        ("0.34.2", True),
+        ("0.35.0", True),
+        ("1.2.3", True),
+        ("0.34.2-rc1", False),
+        ("0", False),
+        (None, False),
+    ],
+)
+def test_any_released_runtime_is_accepted(version, accepted) -> None:
+    assert ollama_runtime_accepted(version) is accepted
 
 
 def test_ollama_preflight_rejects_different_valid_model_digest() -> None:

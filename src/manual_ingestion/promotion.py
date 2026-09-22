@@ -36,8 +36,9 @@ from .providers.ollama import (
     ACCEPTED_OLLAMA_MODEL,
     ACCEPTED_OLLAMA_MODEL_DIGEST,
     ACCEPTED_OLLAMA_OUTPUT_PARAMS,
-    OLLAMA_RUNTIME_BY_PROMPT_VERSION,
     OLLAMA_PROVIDER_NAME,
+    OLLAMA_RUNTIME_BY_PROMPT_VERSION,
+    ollama_runtime_accepted,
 )
 from .structure.ocr_reconstruct import (
     OCR_FALLBACK_STRATEGY,
@@ -259,8 +260,10 @@ def caption_identity_errors(
             if isinstance(configured_prompt, str)
             else None
         )
-        if expected_runtime != accepted_runtime or accepted_runtime is None:
-            errors.append("Ollama runtime version differs from the accepted setup")
+        if accepted_runtime is None:
+            errors.append("Caption prompt version differs from the accepted setup")
+        elif not ollama_runtime_accepted(expected_runtime):
+            errors.append(f"Ollama runtime version {expected_runtime!r} is not a release version")
         if (
             isinstance(preflight, dict)
             and preflight.get("model_digest") != ACCEPTED_OLLAMA_MODEL_DIGEST
@@ -349,12 +352,10 @@ def _enrichment_gate(
         and isinstance(raw_enrichment, dict)
         and isinstance(raw_enrichment.get("prompt_version"), str)
         and raw_enrichment["prompt_version"] in OLLAMA_RUNTIME_BY_PROMPT_VERSION
-        and enrichment.provider_preflight
-        == {
-            "version": OLLAMA_RUNTIME_BY_PROMPT_VERSION[raw_enrichment["prompt_version"]],
-            "model": ACCEPTED_OLLAMA_MODEL,
-            "model_digest": ACCEPTED_OLLAMA_MODEL_DIGEST,
-        }
+        and set(enrichment.provider_preflight) == {"version", "model", "model_digest"}
+        and ollama_runtime_accepted(enrichment.provider_preflight["version"])
+        and enrichment.provider_preflight["model"] == ACCEPTED_OLLAMA_MODEL
+        and enrichment.provider_preflight["model_digest"] == ACCEPTED_OLLAMA_MODEL_DIGEST
     )
     accepted_identity = (
         manifest.pipeline.enrichment_provider == OLLAMA_PROVIDER_NAME

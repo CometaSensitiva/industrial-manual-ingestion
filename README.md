@@ -26,15 +26,17 @@ source .venv/bin/activate
 pip install '.[docling]'
 ```
 
-On later sessions, enter the project directory, activate the existing environment and open the guided help:
+On later sessions, enter the project directory, activate the existing environment and open the home screen:
 
 ```sh
 cd /path/to/industrial-manual-ingestion
 source .venv/bin/activate
-manual-ingestion --help
+manual-ingestion
 ```
 
-The help includes complete commands that can be copied directly. To try the included public example:
+![CLI home screen](docs/cli.svg)
+
+The quickest way to process your own PDF is `manual-ingestion start`, which asks four questions and runs everything (see [CLI](#cli)). The home screen also lists every command and complete examples to copy. To try the included public example step by step:
 
 ```sh
 manual-ingestion detect examples/synthetic-manual.pdf
@@ -45,7 +47,7 @@ manual-ingestion validate examples/synthetic-bundle
 
 The first bundle is intentionally created without Qwen so you can test the complete flow immediately. Its status is therefore `experimental`. The output folder must not already exist.
 
-For image enrichment, run **Ollama 0.34.0** with **qwen3.5:4b**. The backend verifies the runtime and model digest; these are deliberately fixed for reproducible output.
+For image enrichment, run **Ollama** (any release; it updates itself) with **qwen3.5:4b**. The model digest, prompt version and output parameters are fixed for reproducible output; the exact Ollama version is recorded in every bundle for traceability.
 
 ```sh
 ollama pull qwen3.5:4b
@@ -55,6 +57,14 @@ manual-ingestion ingest examples/synthetic-manual.pdf --out runs/my-manual --pag
 First-time parsing downloads Docling model weights. Enrichment runs locally. Installation and model downloads require network access; documents are sent only to the configured Ollama endpoint (localhost by default).
 
 ## CLI
+
+The simplest way in is the guided run. It asks four questions (the PDF, where to save the bundle, whether to describe images, whether to add page previews), accepts a dragged-in path, suggests a free folder name, checks that Ollama and the model are ready, and shows the equivalent command before starting:
+
+```sh
+manual-ingestion start
+```
+
+The same work, as direct commands:
 
 ```sh
 manual-ingestion detect manual.pdf
@@ -67,7 +77,12 @@ manual-ingestion schema manual
 
 The interface and help are in English. `--language` records the document language; the preserved technical-caption prompt currently requests Italian fields, so Qwen descriptions may be in Italian.
 
-Normal output is a concise human summary with branded, task-oriented help. `--json` gives undecorated machine-readable stdout; progress and library logs go to stderr. `--verbose` enables additional details. Run `manual-ingestion --help` for the guided workflow, or use `manual-ingestion ingest --help`, `detect --help`, `validate --help` and `schema --help` for focused instructions.
+- **Finding your way:** `manual-ingestion` on its own (or `--help`) opens the home screen with every command. `manual-ingestion help ingest` opens the guided help for one command, and a mistyped command suggests the closest match.
+- **After each command:** human-readable results end with a **Next** section containing the follow-up commands, already filled in with your paths.
+- **When something goes wrong:** common mistakes (missing file, wrong file type, existing output folder, a folder that is not a bundle, Ollama not running or model missing) explain what to try instead.
+- **Look and feel:** output shares the viewer's identity: a two-tone ASCII portrait (lavender for identity, cobalt for commands and paths), one divider style, `[ok]`/`[!]`/`[!!]` status tokens and a result tree. The portrait is omitted below 100 columns and in redirected output.
+- **Typing effect:** in an interactive terminal the home screen types itself with a variable, human rhythm (a few seconds). Press any key to show it at once, or set `MANUAL_INGESTION_NO_ANIMATION=1` to disable it. Pipes, CI and `--json` are never animated.
+- **Scripts:** `--json` (on `detect`, `ingest`, `validate`) gives undecorated machine-readable stdout, and errors stay plain `manual-ingestion: error: …` lines on stderr. Progress and library logs go to stderr. `--verbose` enables additional details.
 
 `--page-previews` adds full-page PNGs for the viewer. `--pages 1-3,5` processes a diagnostic subset. `--no-enrich` skips image descriptions. The latter two produce an experimental bundle. The destination must not already exist. `--write-failure-report` saves a report beside the destination on failure.
 
@@ -77,11 +92,11 @@ Scanned PDFs use an isolated PaddleOCR-VL runtime, configured with `--paddle-pyt
 
 The public viewer opens a synthetic example automatically. Use **Open bundle** to choose a local folder or enter an HTTP(S) URL. Local folders are read in the browser and are not uploaded. A remote server must allow cross-origin reads.
 
-- **Overview:** a visual journey through the source PDF, extracted structure and image descriptions, with real bundle previews, route explanations and warnings. Runs without enrichment are shown explicitly.
+- **Overview:** a visual journey through the source PDF, extracted structure and image descriptions, with real bundle previews, route explanations and warnings. A terminal card shows the exact `manual-ingestion ingest` command that reproduces the run. Runs without enrichment are shown explicitly.
 - **Inspect:** collapsible document hierarchy, source page, labeled bounding boxes and extracted content. Images, tables, text and titles use the restrained accent palette inherited from the original research viewer.
-- **Validation:** published software checks, provenance and JSON.
+- **Validation:** reported check status, expandable diagnostics and warnings, and direct links to each bundle file. Software checks and semantic review remain separate.
 
-The source-text panel shows fields attached to the selected element, not a reconstruction of an external retrieval system. Add `--page-previews` during ingestion to inspect complete source pages and bounding boxes. Without it, available crops and extracted content remain inspectable.
+The **Source evidence** panel shows fields attached to the selected element, not a reconstruction of an external retrieval system. Add `--page-previews` during ingestion to inspect complete source pages and bounding boxes. Without it, available crops and extracted content remain inspectable.
 
 Run locally with Node 22 or later:
 

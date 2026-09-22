@@ -16,12 +16,16 @@ from . import __version__
 from .adapters.paddle_adapter import PaddleRuntimeConfig
 from .cli_display import (
     PresentationParser,
+    bundle_name_for,
     operational_output,
+    shell_path,
     show_detection,
+    show_error,
     show_outcome,
     show_validation,
 )
 from .cli_progress import RichProgressRenderer
+from .cli_start import run_guided
 from .detection import detect_pdf_capabilities
 from .failure_report import build_failure_report, write_failure_report
 from .models import ManualDocument, RunManifest
@@ -81,6 +85,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--version", action="version", version=__version__)
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    start = subparsers.add_parser("start", help="Guided run: answer a few questions")
+    start.set_defaults(json=False, verbose=False)
 
     schema = subparsers.add_parser("schema", help="Print a canonical JSON Schema")
     schema.add_argument("contract", choices=["manual", "run"])
@@ -313,7 +320,42 @@ def _run_ingest_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def _hint(message: str, args: argparse.Namespace) -> str | None:
+    """Turn the most common failures into one concrete next action."""
+    if message.startswith("PDF not found"):
+        return "check the path, or type the command, a space, then drag the PDF into the terminal"
+    if message.startswith("Source is not a PDF"):
+        return "choose a .pdf file"
+    if message.startswith("run bundle already exists"):
+        source = getattr(args, "source", None) or Path("manual.pdf")
+        return f"choose a new folder: --out {shell_path(bundle_name_for(source))}"
+    lowered = message.lower()
+    if "cannot reach local ollama" in lowered:
+        return "start Ollama (open the app or run: ollama serve), or add --no-enrich"
+    if "is not installed" in lowered and "ollama" in lowered:
+        return f"ollama pull {OLLAMA_MODEL}, or add --no-enrich"
+    if "different digest" in lowered:
+        return f"re-download the accepted model: ollama pull {OLLAMA_MODEL}"
+    if "ollama" in lowered or "provider" in lowered:
+        return "add --no-enrich to skip image descriptions, or --verbose for details"
+    return None
+
+
+def _report_error(args: argparse.Namespace, message: str) -> None:
+    if getattr(args, "json", False):
+        print(f"manual-ingestion: error: {message}", file=sys.stderr)
+    else:
+        show_error(message, hint=_hint(message, args))
+
+
 def _run(args: argparse.Namespace) -> int:
+    if args.command == "start":
+        return run_guided(
+            lambda argv: build_parser().parse_args(argv),
+            _run_ingest_command,
+            model=OLLAMA_MODEL,
+        )
+
     if args.command == "schema":
         model = ManualDocument if args.contract == "manual" else RunManifest
         _print_json(model.model_json_schema(), indent=2)
@@ -324,10 +366,17 @@ def _run(args: argparse.Namespace) -> int:
         if args.json:
             _print_json(detected.model_dump(mode="json"))
         else:
-            show_detection(detected, verbose=args.verbose)
+            show_detection(detected, verbose=args.verbose, source=args.source)
         return 0
 
     if args.command == "validate":
+        if not args.json and not (args.run_dir / "run.json").is_file():
+            show_error(
+                "This folder is not a bundle" if args.run_dir.is_dir() else "Bundle folder not found",
+                f"{args.run_dir} has no run.json" if args.run_dir.is_dir() else str(args.run_dir),
+                "use the folder you passed to --out when running ingest",
+            )
+            return 1
         report = validate_run_bundle(args.run_dir)
         if args.json:
             _print_json(report.model_dump(mode="json"))
@@ -344,14 +393,22 @@ def _run(args: argparse.Namespace) -> int:
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI and return a process exit code without operational tracebacks."""
 
-    args = build_parser().parse_args(argv)
+    argv = list(sys.argv[1:] if argv is None else argv)
+    parser = build_parser()
+    if not argv:
+        # A bare invocation opens the home screen instead of a usage error.
+        parser.print_help()
+        return 0
+    if argv[0] == "help":
+        argv = [*argv[1:2], "--help"]
+    args = parser.parse_args(argv)
     try:
         return _run(args)
     except _IngestCommandFailure as exc:
         if args.verbose:
             traceback.print_exception(exc.original, file=sys.stderr)
         message = str(exc.original).strip() or exc.original.__class__.__name__
-        print(f"manual-ingestion: error: {message}", file=sys.stderr)
+        _report_error(args, message)
         if exc.report_path is not None:
             print(
                 f"manual-ingestion: failure report: {exc.report_path}",
@@ -368,7 +425,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if getattr(args, "verbose", False):
             traceback.print_exc(file=sys.stderr)
         message = str(exc).strip() or exc.__class__.__name__
-        print(f"manual-ingestion: error: {message}", file=sys.stderr)
+        _report_error(args, message)
         return 1
 
 

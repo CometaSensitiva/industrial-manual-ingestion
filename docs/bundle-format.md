@@ -48,11 +48,11 @@ The public acceptance registry is empty. Scanned bundles can pass structural val
 
 ## Compatibility
 
-The Python package distribution is `industrial-manual-ingestion`, its import remains `manual_ingestion`, and its command is `manual-ingestion`. Bundle schema 1.1 and extraction/enrichment behavior are preserved. The CLI now defaults to human output: existing scripts should add `--json`. English is the default document language; choose `--language it` for Italian.
+The Python package distribution is `industrial-manual-ingestion`, its import remains `manual_ingestion`, and its command is `manual-ingestion`. Bundle schema 1.1 and extraction/enrichment behavior are preserved. The CLI now defaults to human output: existing scripts should add `--json`. Caption provenance records the exact Ollama version; any release is accepted, while the model digest, prompt version and output parameters are fixed. English is the default document language; choose `--language it` for Italian.
 
 ## Reproduce the public example
 
-With the digital parser installed and the required Ollama setup running:
+With the digital parser installed and Ollama running with `qwen3.5:4b`:
 
 ```sh
 python examples/build_example.py

@@ -71,12 +71,14 @@ def test_benign_profile_warning_does_not_demote_accepted_digital_setup() -> None
     [
         ("technical-caption-v2", "0.31.2", True),
         ("technical-caption-v3", "0.34.0", True),
-        ("technical-caption-v2", "0.34.0", False),
-        ("technical-caption-v3", "0.31.2", False),
+        ("technical-caption-v4", "0.34.2", True),
+        ("technical-caption-v4", "0.35.0", True),
+        ("technical-caption-v2", "0.34.0", True),
         ("technical-caption-v999", "0.34.0", False),
+        ("technical-caption-v4", "nightly", False),
     ],
 )
-def test_prompt_and_runtime_must_form_one_frozen_setup(
+def test_accepted_prompt_is_required_and_any_released_runtime_is_recorded(
     prompt_version, runtime_version, accepted,
 ) -> None:
     manifest, manual, enrichment = _contracts(

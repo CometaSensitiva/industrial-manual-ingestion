@@ -22,9 +22,11 @@ ACCEPTED_OLLAMA_MODEL = "qwen3.5:4b"
 ACCEPTED_OLLAMA_MODEL_DIGEST = (
     "2a654d98e6fba55d452b7043684e9b57a947e393bbffa62485a7aac05ee4eefd"
 )
+# Reference release of the published examples; any release is accepted at runtime.
 ACCEPTED_OLLAMA_VERSION = "0.34.0"
-# Append-only historical setup identities are used when validating saved bundles.
-# New inference uses only ACCEPTED_OLLAMA_VERSION above.
+# Append-only prompt versions accepted when validating saved bundles, with the
+# Ollama release each was introduced on. The runtime itself is recorded but not
+# enforced (see ollama_runtime_accepted): Ollama updates itself.
 OLLAMA_RUNTIME_BY_PROMPT_VERSION = {
     "technical-caption-v2": "0.31.2",
     "technical-caption-v3": "0.34.0",
@@ -37,6 +39,18 @@ ACCEPTED_OLLAMA_OUTPUT_PARAMS: dict[str, object] = {
     "num_ctx": 4096,
     "thinking": False,
 }
+
+
+def ollama_runtime_accepted(version: object) -> bool:
+    """Any released Ollama version is accepted; it is recorded, never enforced.
+
+    Reproducibility rests on the pinned model digest, prompt version and output
+    parameters. The exact runtime stays in provenance for traceability.
+    """
+    if not isinstance(version, str):
+        return False
+    parts = version.split(".")
+    return len(parts) >= 2 and all(part.isdigit() for part in parts)
 
 
 class OllamaProviderError(RuntimeError):
@@ -83,17 +97,15 @@ class OllamaCaptionProvider:
         self._preflight_runtime: dict[str, str] | None = None
 
     def preflight(self) -> dict[str, str]:
-        """Verify Ollama and the exact configured model tag once per provider."""
+        """Verify Ollama and the exact configured model once per provider.
+
+        The runtime version is recorded, not enforced: Ollama updates itself.
+        """
 
         if self._preflight_runtime is not None:
             return dict(self._preflight_runtime)
 
         version = self.runtime_version()
-        if version != ACCEPTED_OLLAMA_VERSION:
-            raise OllamaProviderError(
-                "Ollama runtime does not match the accepted enrichment setup: "
-                f"expected {ACCEPTED_OLLAMA_VERSION!r}, received {version!r}"
-            )
         data = self._request_json("GET", "/api/tags")
         models = data.get("models")
         if not isinstance(models, list):
