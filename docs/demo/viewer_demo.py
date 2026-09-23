@@ -6,6 +6,7 @@ the local Google Chrome):
 
     python docs/demo/viewer_demo.py            # English: docs/viewer-demo.gif and docs/viewer-demo.mp4
     python docs/demo/viewer_demo.py --lang it  # Italian: build/viewer-demo-it.gif and build/viewer-demo-it.mp4
+    python docs/demo/viewer_demo.py --reuse    # re-encode the last recording, e.g. after changing the window
 
 Frames come from Chrome's screencast (sharp, one per visual change) and are timed
 and encoded with ffmpeg. A drawn cursor shows where the "user" points and clicks.
@@ -22,6 +23,7 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 from playwright.sync_api import Page, sync_playwright
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -90,7 +92,11 @@ class Screencast:
         self.session.send("Page.screencastFrameAck", {"sessionId": event["sessionId"]})
 
     def start(self) -> None:
-        self.session.send("Page.startScreencast", {"format": "png", "everyNthFrame": 1})
+        # Without a maximum size Chrome sends CSS-pixel frames; ask for device pixels.
+        self.session.send("Page.startScreencast", {
+            "format": "png", "everyNthFrame": 1,
+            "maxWidth": round(VIEWPORT["width"] * SCALE), "maxHeight": round(VIEWPORT["height"] * SCALE),
+        })
 
     def stop(self) -> None:
         self.session.send("Page.stopScreencast")
@@ -157,9 +163,8 @@ def perform(page: Page, url: str) -> None:
     director.pause(1.6)
 
 
-def encode(frames: list[tuple[float, bytes]], name: str, gif_width: int) -> tuple[Path, Path]:
-    """Hold each frame until the next one, then encode MP4 and a lean GIF."""
-    work = BUILD / f"{name}-frames"
+def save_frames(frames: list[tuple[float, bytes]], work: Path) -> None:
+    """Write the frames and an ffmpeg concat list holding each until the next one."""
     shutil.rmtree(work, ignore_errors=True)
     work.mkdir(parents=True)
     lines = []
@@ -170,30 +175,70 @@ def encode(frames: list[tuple[float, bytes]], name: str, gif_width: int) -> tupl
         lines += [f"file '{path.name}'", f"duration {max(duration, 1 / 60):.4f}"]
     lines.append(f"file '{len(frames) - 1:05d}.png'")  # concat needs the last file repeated
     (work / "frames.txt").write_text("\n".join(lines) + "\n")
+
+
+def browser_window(width: int, height: int, page: tuple[int, int, int], title: str) -> tuple[Image.Image, tuple[int, int]]:
+    """A light macOS-style window with a soft shadow, drawn at the recording scale.
+
+    Returns the background and where the page frames go.
+    """
+    scale = width / VIEWPORT["width"]  # draw the window at the frames' real scale
+    bar, radius, margin = round(40 * scale), round(12 * scale), round(40 * scale)
+    window_w, window_h = width, height + bar
+    canvas = Image.new("RGBA", (window_w + 2 * margin, window_h + 2 * margin), page + (255,))
+    shadow = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    ImageDraw.Draw(shadow).rounded_rectangle(
+        (margin, margin + round(10 * scale), margin + window_w, margin + window_h + round(10 * scale)),
+        radius, fill=(20, 20, 40, 60),
+    )
+    canvas = Image.alpha_composite(canvas, shadow.filter(ImageFilter.GaussianBlur(round(16 * scale))))
+    draw = ImageDraw.Draw(canvas)
+    draw.rounded_rectangle((margin, margin, margin + window_w, margin + window_h), radius, fill=(255, 255, 255), outline=(222, 222, 230))
+    draw.rounded_rectangle((margin, margin, margin + window_w, margin + bar), radius, fill=(246, 246, 248))
+    draw.rectangle((margin + 1, margin + bar - radius, margin + window_w - 1, margin + bar), fill=(246, 246, 248))
+    draw.line((margin, margin + bar, margin + window_w, margin + bar), fill=(225, 225, 232), width=max(1, round(scale)))
+    dot, gap = round(6 * scale), round(20 * scale)
+    for index, colour in enumerate(((255, 95, 87), (254, 188, 46), (40, 200, 64))):
+        cx, cy = margin + round(20 * scale) + index * gap, margin + bar // 2
+        draw.ellipse((cx - dot, cy - dot, cx + dot, cy + dot), fill=colour)
+    try:
+        font = ImageFont.truetype("/System/Library/Fonts/HelveticaNeue.ttc", round(13 * scale))
+    except OSError:
+        font = ImageFont.load_default()
+    draw.text((margin + window_w / 2, margin + bar / 2), title, font=font, fill=(90, 90, 104), anchor="mm")
+    return canvas.convert("RGB"), (margin, margin + bar)
+
+
+def encode(work: Path, name: str, gif_width: int, page: tuple[int, int, int]) -> tuple[Path, Path]:
+    """Put the page frames in the window, then encode MP4 and a lean GIF."""
+    width, height = Image.open(work / "00000.png").size
+    background, (x, y) = browser_window(width, height, page, "manual-ingestion · viewer")
+    background.save(work / "window.png")
     mp4, gif = BUILD / f"{name}.mp4", BUILD / f"{name}.gif"
-    concat = ["ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", str(work / "frames.txt")]
-    subprocess.run([*concat, "-vf", "fps=30,pad=ceil(iw/2)*2:ceil(ih/2)*2,format=yuv420p",
+    sources = ["ffmpeg", "-v", "error", "-y", "-loop", "1", "-framerate", "30", "-i", str(work / "window.png"),
+               "-f", "concat", "-safe", "0", "-i", str(work / "frames.txt")]
+    framed = f"[1]fps=30[page];[0][page]overlay={x}:{y}:shortest=1"
+    subprocess.run([*sources, "-filter_complex", f"{framed},pad=ceil(iw/2)*2:ceil(ih/2)*2,format=yuv420p",
                     "-c:v", "libx264", "-preset", "slow", "-crf", "20", "-movflags", "+faststart", str(mp4)], check=True)
-    subprocess.run([*concat, "-filter_complex",
-                    f"fps=12,scale={gif_width}:-1:flags=lanczos,split[a][b];"
+    # Opaque background: the static window and shadow cost nothing once the
+    # GIF only encodes the regions that change.
+    subprocess.run([*sources, "-filter_complex",
+                    f"{framed},fps=12,scale={gif_width}:-1:flags=lanczos,split[a][b];"
                     "[a]palettegen=max_colors=128:stats_mode=full[p];"
                     "[b][p]paletteuse=dither=none:diff_mode=rectangle", "-loop", "0", str(gif)], check=True)
     return mp4, gif
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--lang", choices=("en", "it"), default="en")
-    args = parser.parse_args()
+def record(lang: str, work: Path) -> None:
     if not (ROOT / "viewer/dist/index.html").exists():
         raise SystemExit("Build the viewer first: npm --prefix viewer run build")
-    BUILD.mkdir(exist_ok=True)
     with preview_server() as base, sync_playwright() as playwright:
-        browser = playwright.chromium.launch(channel="chrome")
+        # The flag makes headless screencast frames use device pixels (1920×1200).
+        browser = playwright.chromium.launch(channel="chrome", args=[f"--force-device-scale-factor={SCALE}"])
         context = browser.new_context(viewport=VIEWPORT, device_scale_factor=SCALE, color_scheme="light")
         context.add_init_script(CURSOR)
         page = context.new_page()
-        page.goto(f"{base}?lang={args.lang}#overview")
+        page.goto(f"{base}?lang={lang}#overview")
         page.wait_for_selector(".stages img")
         page.wait_for_timeout(600)
         cast = Screencast(page)
@@ -201,13 +246,30 @@ def main() -> int:
         perform(page, base)
         cast.stop()
         browser.close()
+    save_frames(cast.frames, work)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--lang", choices=("en", "it"), default="en")
+    parser.add_argument("--reuse", action="store_true", help="re-encode the last recording instead of recording again")
+    args = parser.parse_args()
+    BUILD.mkdir(exist_ok=True)
     name = "viewer-demo" if args.lang == "en" else "viewer-demo-it"
-    mp4, gif = encode(cast.frames, name, gif_width=960 if args.lang == "en" else 1600)
+    work = BUILD / f"{name}-frames"
+    if args.reuse:
+        if not (work / "frames.txt").exists():
+            raise SystemExit(f"No recording to reuse in {work}; run without --reuse first")
+    else:
+        record(args.lang, work)
+    # English goes to the README on a light grey page; Italian is for white slides.
+    page = (244, 244, 248) if args.lang == "en" else (255, 255, 255)
+    mp4, gif = encode(work, name, gif_width=960 if args.lang == "en" else 1600, page=page)
     if args.lang == "en":
         mp4 = shutil.copy(mp4, ROOT / "docs/viewer-demo.mp4")
         gif = shutil.copy(gif, ROOT / "docs/viewer-demo.gif")
     for path in (Path(mp4), Path(gif)):
-        print(f"{path.relative_to(ROOT)}  {path.stat().st_size / 1_000_000:.1f} MB  ({len(cast.frames)} frames)")
+        print(f"{path.relative_to(ROOT)}  {path.stat().st_size / 1_000_000:.1f} MB")
     return 0
 
 

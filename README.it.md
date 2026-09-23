@@ -175,7 +175,7 @@ python docs/demo/render.py --slide
 
 `--slide` usa invece `docs/demo/slide.tape`: circa 76 colonne con caratteri grandi, per un riquadro di slide in proporzione 2,24:1, seguendo detect → ingest → validate con le descrizioni delle immagini (serve Ollama attivo). Produce `build/cli-demo-slide.mp4`.
 
-La demo del viewer si registra in un browser con Playwright (`pip install playwright`; usa il Google Chrome installato) dopo aver compilato il viewer. `--lang it` registra l'interfaccia in italiano in `build/`:
+La demo del viewer si registra in un browser con Playwright (`pip install playwright`; usa il Google Chrome installato) dopo aver compilato il viewer. `--lang it` registra l'interfaccia in italiano in `build/`, e `--reuse` ricodifica l'ultima registrazione (per esempio dopo aver cambiato la cornice della finestra) senza registrare di nuovo:
 
 ```sh
 npm --prefix viewer run build
