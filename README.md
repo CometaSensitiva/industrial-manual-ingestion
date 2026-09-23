@@ -63,6 +63,10 @@ First-time parsing downloads Docling model weights. Enrichment runs locally. Ins
 
 ## CLI
 
+![CLI demo: the home screen, a guided run, validation and a mistyped command](docs/cli-demo.gif)
+
+[Watch the demo as MP4](docs/cli-demo.mp4) · recorded with [VHS](https://github.com/charmbracelet/vhs)
+
 The simplest way in is the guided run. It asks four questions (the PDF, where to save the bundle, whether to describe images, whether to add page previews), accepts a dragged-in path, suggests a free folder name, checks that Ollama and the model are ready, and shows the equivalent command before starting:
 
 ```sh
@@ -83,7 +87,7 @@ manual-ingestion schema manual
 The interface and help are in English. `--language` records the document language; the preserved technical-caption prompt currently requests Italian fields, so Qwen descriptions may be in Italian.
 
 - **Finding your way:** `manual-ingestion` on its own (or `--help`) opens the home screen with every command. `manual-ingestion help ingest` opens the guided help for one command, and a mistyped command suggests the closest match.
-- **After each command:** human-readable results end with a **Next** section containing the follow-up commands, already filled in with your paths.
+- **After each command:** human-readable results end with a **Next** section containing the follow-up commands, already filled in with your paths. Set `MANUAL_INGESTION_NO_HINTS=1` to hide them (for experienced users, screenshots and recordings).
 - **When something goes wrong:** common mistakes (missing file, wrong file type, existing output folder, a folder that is not a bundle, Ollama not running or model missing) explain what to try instead.
 - **Look and feel:** output shares the viewer's identity: a two-tone ASCII portrait (lavender for identity, cobalt for commands and paths), one divider style, `[ok]`/`[!]`/`[!!]` status tokens and a result tree. The portrait is omitted below 100 columns and in redirected output.
 - **Typing effect:** in an interactive terminal the home screen types itself with a variable, human rhythm (a few seconds). Press any key to show it at once, or set `MANUAL_INGESTION_NO_ANIMATION=1` to disable it. Pipes, CI and `--json` are never animated.
@@ -94,6 +98,10 @@ The interface and help are in English. `--language` records the document languag
 Scanned PDFs use an isolated PaddleOCR-VL runtime, configured with `--paddle-python` and `--paddle-cache`. See [runtime details](docs/bundle-format.md#scanned-documents). Scanned output remains experimental by default: this release does not claim general acceptance from a private document study.
 
 ## Viewer
+
+![Viewer demo: the run overview, clicking regions of the source page to read what was extracted, and the checks](docs/viewer-demo.gif)
+
+[Watch the demo as MP4](docs/viewer-demo.mp4)
 
 The public viewer opens a synthetic example automatically. Use **Open bundle** to choose a local folder or enter an HTTP(S) URL. Local folders are read in the browser and are not uploaded. A remote server must allow cross-origin reads.
 
@@ -156,6 +164,22 @@ Viewer interface copy lives in `viewer/src/i18n.ts` (English and Italian; add ev
 
 ```sh
 python viewer/scripts/brand_assets.py
+```
+
+The CLI demo is scripted in `docs/demo/cli.tape`. Re-record it after changing the CLI (requires `brew install vhs`); VHS captures the frames and the script encodes `docs/cli-demo.gif` and `docs/cli-demo.mp4`:
+
+```sh
+python docs/demo/render.py
+python docs/demo/render.py --slide
+```
+
+`--slide` renders `docs/demo/slide.tape` instead: about 76 columns in large type, for a 2.24:1 slide area, following detect → ingest → validate with image descriptions (Ollama must be running). It writes `build/cli-demo-slide.mp4`.
+
+The viewer demo is recorded in a browser with Playwright (`pip install playwright`; it drives the local Google Chrome) after building the viewer. `--lang it` records the Italian interface into `build/`:
+
+```sh
+npm --prefix viewer run build
+python docs/demo/viewer_demo.py
 ```
 
 CI runs the Python suite, builds a wheel, and tests/builds the viewer. GitHub Pages serves only the viewer and synthetic example. Runtime documents, caches and model files are not committed.

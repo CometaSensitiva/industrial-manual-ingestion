@@ -442,8 +442,17 @@ def bundle_name_for(source) -> Path:
     return candidate
 
 
+HINTS_OFF = "MANUAL_INGESTION_NO_HINTS"
+
+
 def show_next(steps):
-    """End human output with the obvious next commands, ready to copy."""
+    """End human output with the obvious next commands, ready to copy.
+
+    Experienced users, screenshots and recordings can hide them with
+    MANUAL_INGESTION_NO_HINTS=1.
+    """
+    if os.environ.get(HINTS_OFF):
+        return
     console = Console(highlight=False, markup=False)
     console.print()
     section(console, "Next")

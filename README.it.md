@@ -63,6 +63,10 @@ La prima elaborazione scarica i pesi dei modelli di Docling. Le descrizioni veng
 
 ## CLI
 
+![Demo della CLI: schermata iniziale, elaborazione guidata, verifica e comando scritto male](docs/cli-demo.gif)
+
+[Guarda la demo in MP4](docs/cli-demo.mp4) · registrata con [VHS](https://github.com/charmbracelet/vhs)
+
 Il modo più semplice per iniziare è l'elaborazione guidata. Fa quattro domande (il PDF, dove salvare il bundle, se descrivere le immagini, se aggiungere le anteprime delle pagine), accetta un percorso trascinato nel terminale, propone un nome di cartella libero, controlla che Ollama e il modello siano pronti e mostra il comando equivalente prima di partire:
 
 ```sh
@@ -83,7 +87,7 @@ manual-ingestion schema manual
 L'interfaccia e l'aiuto della CLI sono in inglese. `--language` registra la lingua del documento (`--language it` per un manuale in italiano); il prompt per le didascalie tecniche richiede campi in italiano, quindi le descrizioni di Qwen possono essere in italiano.
 
 - **Orientarsi:** `manual-ingestion` da solo (o `--help`) apre la schermata iniziale con tutti i comandi. `manual-ingestion help ingest` apre la guida di un singolo comando, e un comando scritto male suggerisce quello più simile.
-- **Dopo ogni comando:** l'output leggibile termina con una sezione **Next** che contiene i comandi successivi, già compilati con i tuoi percorsi.
+- **Dopo ogni comando:** l'output leggibile termina con una sezione **Next** che contiene i comandi successivi, già compilati con i tuoi percorsi. Imposta `MANUAL_INGESTION_NO_HINTS=1` per nasconderli (per utenti esperti, screenshot e registrazioni).
 - **Quando qualcosa va storto:** gli errori più comuni (file mancante, tipo di file sbagliato, cartella di output già esistente, cartella che non è un bundle, Ollama spento o modello mancante) spiegano cosa provare.
 - **Aspetto:** l'output condivide l'identità del viewer: un ritratto ASCII in due toni (lavanda per l'identità, cobalto per comandi e percorsi), un solo stile di separatori, i marcatori di stato `[ok]`/`[!]`/`[!!]` e un albero dei risultati. Il ritratto viene omesso sotto le 100 colonne e quando l'output è reindirizzato.
 - **Effetto di scrittura:** in un terminale interattivo la schermata iniziale si scrive da sola con un ritmo variabile, umano (qualche secondo). Premi un tasto qualsiasi per mostrarla subito, oppure imposta `MANUAL_INGESTION_NO_ANIMATION=1` per disattivarlo. Pipe, CI e `--json` non sono mai animati.
@@ -94,6 +98,10 @@ L'interfaccia e l'aiuto della CLI sono in inglese. `--language` registra la ling
 I PDF scansionati usano un runtime PaddleOCR-VL isolato, configurato con `--paddle-python` e `--paddle-cache`. Vedi i [dettagli del runtime](docs/bundle-format.md#scanned-documents). Per impostazione predefinita l'output da scansione resta sperimentale: questa versione non dichiara un'accettazione generale basata su uno studio di documenti privati.
 
 ## Viewer
+
+![Demo del viewer: la panoramica dell'elaborazione, il clic sulle aree della pagina originale per leggere cosa è stato estratto e le verifiche](docs/viewer-demo.gif)
+
+[Guarda la demo in MP4](docs/viewer-demo.mp4) (interfaccia in inglese; il viewer è disponibile anche in italiano)
 
 Il viewer pubblico apre automaticamente un esempio sintetico. Usa **Apri bundle** per scegliere una cartella locale o inserire un URL HTTP(S). Le cartelle locali vengono lette nel browser e non vengono caricate online. Un server remoto deve consentire letture cross-origin.
 
@@ -156,6 +164,22 @@ I testi dell'interfaccia del viewer si trovano in `viewer/src/i18n.ts` (inglese 
 
 ```sh
 python viewer/scripts/brand_assets.py
+```
+
+La demo della CLI è descritta in `docs/demo/cli.tape`. Registrala di nuovo dopo aver modificato la CLI (serve `brew install vhs`): VHS cattura i fotogrammi e lo script produce `docs/cli-demo.gif` e `docs/cli-demo.mp4`:
+
+```sh
+python docs/demo/render.py
+python docs/demo/render.py --slide
+```
+
+`--slide` usa invece `docs/demo/slide.tape`: circa 76 colonne con caratteri grandi, per un riquadro di slide in proporzione 2,24:1, seguendo detect → ingest → validate con le descrizioni delle immagini (serve Ollama attivo). Produce `build/cli-demo-slide.mp4`.
+
+La demo del viewer si registra in un browser con Playwright (`pip install playwright`; usa il Google Chrome installato) dopo aver compilato il viewer. `--lang it` registra l'interfaccia in italiano in `build/`:
+
+```sh
+npm --prefix viewer run build
+python docs/demo/viewer_demo.py
 ```
 
 La CI esegue la suite Python, costruisce una wheel e testa e compila il viewer. GitHub Pages pubblica solo il viewer e l'esempio sintetico. Documenti elaborati, cache e file dei modelli non vengono inclusi nel repository.

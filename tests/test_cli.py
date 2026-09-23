@@ -686,3 +686,14 @@ def test_mistyped_command_suggests_the_closest_one(capsys):
 )
 def test_ollama_failures_get_a_specific_hint(message, hint):
     assert hint in cli._hint(message, argparse.Namespace())
+
+
+def test_next_hints_can_be_hidden(monkeypatch, capsys):
+    monkeypatch.setattr(cli, "detect_pdf_capabilities", lambda _: _detected())
+    assert cli.main(["detect", "manual.pdf"]) == 0
+    assert "Next" in capsys.readouterr().out
+    monkeypatch.setenv("MANUAL_INGESTION_NO_HINTS", "1")
+    assert cli.main(["detect", "manual.pdf"]) == 0
+    output = capsys.readouterr().out
+    assert "Next" not in output
+    assert "Document profile" in output
